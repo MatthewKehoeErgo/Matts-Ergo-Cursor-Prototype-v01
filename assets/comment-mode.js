@@ -1,4 +1,7 @@
-import { supabaseInsert } from './supabase.js';
+import { supabaseInsert, supabasePatch } from './supabase.js';
+
+/** PostgREST table storing pinned feedback (see SQL in repo root `feedback_items.sql`). */
+var FEEDBACK_TABLE = 'feedback_items';
 
 let currentSessionId = null;
 
@@ -17,40 +20,29 @@ async function startFeedbackSession() {
  * Flow:
  * 1) User clicks "Add a comment" → enters comment mode (subtle tint + crosshair + hint).
  * 2) User clicks on the page → a compact editor opens anchored near that point.
- * 3) User submits → editor collapses to a marker icon; feedback opens in a new tab as a
- *    pre-filled repository issue (template feedback.yml). Comment mode ends.
- * 4) User clicks a marker → editor reopens with saved text for edits/resubmit.
+ * 3) User submits → feedback is saved to Supabase; editor collapses to a marker icon.
+ *    Comment mode ends.
+ * 4) User clicks a marker → editor reopens with saved text for edits/resubmit (updates same row).
  *
  * Notes:
- * - Comments live only in memory (lost on refresh), per product requirement.
- * - UI copy avoids naming GitHub/Issue; the script still builds a GitHub issue URL internally.
+ * - Marker positions and text stay in memory for the session; persistence is via Supabase.
  */
 
 (function () {
   "use strict";
 
-  /** Default repo if data-feedback-repo is absent on <body> */
-  var DEFAULT_REPO = "MatthewKehoeErgo/Matts-Ergo-Cursor-Prototype-v01";
-  /** Issue template filename under .github/ISSUE_TEMPLATE/ */
-  var ISSUE_TEMPLATE = "feedback.yml";
-  /** Issue title shown in the tracker (neutral wording OK there) */
-  var ISSUE_TITLE = "[Feedback] Test Details – Prototype v0.1";
   /** Icon used for collapsed markers (same asset as the entry button) */
   var ICON_SRC = "assets/add_comment.svg";
 
   var state = {
     /** Whether the user is actively placing feedback */
     commentMode: false,
-    /** @type {{ id: number, x: number, y: number, text: string, collapsed: boolean }[]} */
+    /** @type {{ id: number, x: number, y: number, text: string, collapsed: boolean, supabaseRowId?: string }[]} */
     comments: [],
     nextId: 1,
     layer: null,
     hintEl: null,
   };
-
-  function getFeedbackRepo() {
-    return document.body.getAttribute("data-feedback-repo") || DEFAULT_REPO;
-  }
 
   function getScreenLabel() {
     return (
@@ -61,39 +53,31 @@ async function startFeedbackSession() {
   }
 
   /**
-   * Builds the raw issue body sent via URL (also used if clipboard fallback is needed).
-   * Includes URL, screen id, viewport coordinates, and the collaborator text.
+   * Saves or updates feedback in Supabase for the current session.
+   * Sets `record.supabaseRowId` after insert.
    */
-  function buildIssueBody(commentText, anchorX, anchorY) {
+  async function persistFeedbackToSupabase(record, existing) {
     var pageUrl = window.location.href.split("#")[0];
     var screen = getScreenLabel();
-    var lines = [
-      "### Prototype",
-      "- URL: " + pageUrl,
-      "- Screen / flow: " + screen,
-      "- Placement (viewport px): x ≈ " + Math.round(anchorX) + ", y ≈ " + Math.round(anchorY),
-      "",
-      "### Feedback",
-      commentText.trim(),
-    ];
-    return lines.join("\n");
-  }
-
-  /**
-   * Opens the repo's new-issue page with template + pre-filled title/body.
-   * GitHub may ignore some query params for YAML form templates; body/title still help on many repos.
-   */
-  function openPrefilledFeedbackIssue(commentText, anchorX, anchorY) {
-    var repo = getFeedbackRepo();
-    var body = buildIssueBody(commentText, anchorX, anchorY);
-    var params = new URLSearchParams();
-    params.set("template", ISSUE_TEMPLATE);
-    params.set("title", ISSUE_TITLE);
-    params.set("body", body);
-    var url =
-      "https://github.com/" + repo + "/issues/new?" + params.toString();
-
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (currentSessionId === null) {
+      await startFeedbackSession();
+    }
+    var rowId = existing && existing.supabaseRowId;
+    var payload = {
+      body: record.text.trim(),
+      anchor_x: record.x,
+      anchor_y: record.y,
+      page_url: pageUrl,
+      screen_label: screen,
+    };
+    if (rowId) {
+      await supabasePatch(FEEDBACK_TABLE, rowId, payload);
+      record.supabaseRowId = rowId;
+      return;
+    }
+    payload.session_id = currentSessionId;
+    var rows = await supabaseInsert(FEEDBACK_TABLE, payload);
+    record.supabaseRowId = rows[0].id;
   }
 
   function ensureLayer() {
@@ -215,7 +199,7 @@ async function startFeedbackSession() {
     card.style.left = pos.left + "px";
     card.style.top = pos.top + "px";
 
-    submit.addEventListener("click", function (ev) {
+    submit.addEventListener("click", async function (ev) {
       ev.stopPropagation();
       var text = ta.value;
       if (!text.trim()) {
@@ -231,6 +215,13 @@ async function startFeedbackSession() {
         collapsed: true,
       };
 
+      try {
+        await persistFeedbackToSupabase(record, existing);
+      } catch (err) {
+        console.error("Feedback save failed:", err);
+        return;
+      }
+
       var idx = state.comments.findIndex(function (c) {
         return c.id === id;
       });
@@ -239,7 +230,6 @@ async function startFeedbackSession() {
 
       card.remove();
       renderMarker(record);
-      openPrefilledFeedbackIssue(text, record.x, record.y);
       exitCommentMode();
     });
 

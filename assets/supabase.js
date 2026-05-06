@@ -3,17 +3,38 @@
 export const SUPABASE_URL = 'https://sctpnjrcluonpomdtnfp.supabase.co'
 export const SUPABASE_ANON_KEY = 'sb_publishable_cT4PL23N5w0B9bfUk1gHCg_9IE__PyV'
 
+const jsonHeaders = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_ANON_KEY,
+  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+  'Prefer': 'return=representation'
+}
+
 export async function supabaseInsert(table, payload) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'apikey': SUPABASE_ANON_KEY,
-      'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      'Prefer': 'return=representation'
-    },
+    headers: jsonHeaders,
     body: JSON.stringify(payload)
   })
+
+  if (!response.ok) {
+    const errorText = await response.text()
+    throw new Error(errorText)
+  }
+
+  return response.json()
+}
+
+/** PATCH by primary key `id` (uuid). */
+export async function supabasePatch(table, rowId, payload) {
+  const response = await fetch(
+    `${SUPABASE_URL}/rest/v1/${table}?id=eq.${encodeURIComponent(rowId)}`,
+    {
+      method: 'PATCH',
+      headers: jsonHeaders,
+      body: JSON.stringify(payload)
+    }
+  )
 
   if (!response.ok) {
     const errorText = await response.text()

@@ -3,29 +3,43 @@ Primary repo (origin): https://github.com/MatthewKehoeErgo/Matts-Ergo-Cursor-Pro
 Optional mirror remote (sbci): https://github.com/MatthewKehoeErgo/SBCI-Cursor-Prototype-v01
 Default branch: main
 
-RULE: When the user asks to "deploy", "publish", "push", or "sync" changes to GitHub:
+================================================================================
+FAST PATH — fewer clicks than GitHub Desktop (prefer this for routine updates)
+================================================================================
+Goal: commit in Cursor, publish with one terminal command (no extra Desktop clicks).
+
+Flow (recommended):
+  1) Edit files in Cursor.
+  2) Commit using Cursor’s Source Control: stage → message → Commit (built-in; no Desktop needed).
+  3) Open the integrated terminal and run: `npm run deploy`
+     (runs `git push origin main` — publishes to the Matts-Ergo repo).
+
+One-liner when you prefer the terminal for everything (stage + commit + push):
+  git add -A && git commit -m "Short description of change" && npm run deploy
+
+Optional mirror to the SBCI repo after a successful deploy (only when needed):
+  git push sbci main
+
+================================================================================
+FULL RULE — When the user asks to "deploy", "publish", "push", or "sync"
+================================================================================
 
 1) Verify repo state first
 - Run: git status -sb
-- Confirm we're on the intended branch (usually main) and see what changed.
+- Confirm branch is main (unless they asked for a feature branch).
 
 2) Never commit secrets or local-only files
 - Do NOT add: .env, *.key, *.pem, credentials files, local config, or large build artifacts.
-- Ensure node_modules/ and dist/ are not committed (use .gitignore).
+- Keep node_modules/ and dist/ out of commits (.gitignore).
 
 3) Keep commits small and readable
-- Stage intentionally: git add -A (or add specific paths if the change is targeted)
-- Commit message format:
-  - One short line describing intent, e.g. "Update dashboard layout"
+- Stage: git add -A (or specific paths)
+- Commit message: one short line, e.g. "Update dashboard layout"
 
-4) Push safely
-- If the change is small and the user explicitly wants it on main:
-  - git push origin main
-- Otherwise:
-  - Create a feature branch: feature/<short-name>
-  - Push: git push -u origin HEAD
-  - Open a PR to main and include a short summary + test plan.
+4) Push
+- Normal / fast path: npm run deploy (same as git push origin main)
+- Small change explicitly on main: git push origin main
+- Larger / risky change: branch feature/<short-name>, push, open PR to main
 
 5) Post-push verification
-- Re-run: git status -sb to confirm clean working tree and upstream tracking.
-
+- git status -sb (clean, tracking origin/main)

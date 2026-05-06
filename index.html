@@ -265,6 +265,106 @@
         outline-offset: 2px;
       }
 
+      .top-header-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+      }
+
+      .btn-toggle-test-card {
+        display: inline-flex;
+        align-items: center;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--primary-teal);
+        background: var(--white);
+        border: 2px solid #e0e0e0;
+        padding: 12px 22px;
+        border-radius: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .btn-toggle-test-card:hover {
+        background: #f8f9fa;
+        border-color: #e0e0e0;
+      }
+
+      .btn-toggle-test-card:focus-visible {
+        outline: 2px solid var(--primary-teal);
+        outline-offset: 2px;
+      }
+
+      .floating-test-card {
+        position: fixed;
+        z-index: 10000;
+        left: 24px;
+        top: 96px;
+        width: min(320px, calc(100vw - 32px));
+        margin: 0;
+        padding: 0 16px 16px;
+        background: var(--white);
+        border: 1px solid #dee2e6;
+        border-radius: var(--border-radius);
+        box-shadow:
+          0 4px 24px rgba(0, 0, 0, 0.08),
+          0 2px 8px rgba(0, 0, 0, 0.06);
+        cursor: default;
+        user-select: none;
+      }
+
+      .floating-test-card.is-hidden {
+        display: none;
+      }
+
+      .floating-test-card__handle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0 -16px;
+        padding: 10px 16px 8px;
+        cursor: grab;
+        touch-action: none;
+        border-bottom: 1px dashed #dee2e6;
+      }
+
+      .floating-test-card__handle:active {
+        cursor: grabbing;
+      }
+
+      .floating-test-card__grip {
+        flex-shrink: 0;
+        width: 10px;
+        height: 14px;
+        border-radius: 2px;
+        background: repeating-linear-gradient(
+          to bottom,
+          #9e9e9e,
+          #9e9e9e 2px,
+          transparent 2px,
+          transparent 4px
+        );
+        opacity: 0.65;
+      }
+
+      .floating-test-card__title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        color: var(--text-dark);
+      }
+
+      .floating-test-card__body {
+        margin: 12px 0 0;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--text-grey);
+        user-select: text;
+      }
+
       .content-scroll {
         flex: 1;
         padding: 28px 32px 40px;
@@ -919,7 +1019,12 @@
               <img src="assets/sbci_logo_Without_Text.jpg" alt="SBCI" width="55" height="35" />
             </span>
           </div>
-          <button type="button" class="btn-logout">Log out</button>
+          <div class="top-header-actions">
+            <button type="button" class="btn-toggle-test-card" id="toggle-test-card" aria-pressed="true">
+              Hide test card
+            </button>
+            <button type="button" class="btn-logout">Log out</button>
+          </div>
         </header>
 
         <div class="content-scroll">
@@ -1075,6 +1180,18 @@
           </div>
         </div>
       </div>
+
+      <aside
+        id="floating-test-card"
+        class="floating-test-card"
+        aria-label="Draggable test card"
+      >
+        <div class="floating-test-card__handle" role="presentation">
+          <span class="floating-test-card__grip" aria-hidden="true"></span>
+          <h2 class="floating-test-card__title">Test Details</h2>
+        </div>
+        <p class="floating-test-card__body">Testing if deployment is working</p>
+      </aside>
     </div>
 
     <script>
@@ -1140,6 +1257,74 @@
             closeNav();
           }
         });
+      })();
+
+      (function () {
+        var card = document.getElementById("floating-test-card");
+        var toggleBtn = document.getElementById("toggle-test-card");
+        var handle = card ? card.querySelector(".floating-test-card__handle") : null;
+        if (!card || !toggleBtn || !handle) return;
+
+        var dragging = false;
+        var offsetX = 0;
+        var offsetY = 0;
+
+        function clampPosition(x, y) {
+          var w = card.offsetWidth || 280;
+          var h = card.offsetHeight || 140;
+          var maxX = Math.max(0, window.innerWidth - w);
+          var maxY = Math.max(0, window.innerHeight - h);
+          return {
+            x: Math.min(Math.max(0, x), maxX),
+            y: Math.min(Math.max(0, y), maxY),
+          };
+        }
+
+        function setCardPosition(x, y) {
+          var p = clampPosition(x, y);
+          card.style.left = p.x + "px";
+          card.style.top = p.y + "px";
+        }
+
+        function syncToggleUi() {
+          var hidden = card.classList.contains("is-hidden");
+          toggleBtn.setAttribute("aria-pressed", hidden ? "false" : "true");
+          toggleBtn.textContent = hidden ? "Show test card" : "Hide test card";
+        }
+
+        toggleBtn.addEventListener("click", function () {
+          card.classList.toggle("is-hidden");
+          syncToggleUi();
+        });
+
+        handle.addEventListener("pointerdown", function (e) {
+          if (e.button !== 0) return;
+          var rect = card.getBoundingClientRect();
+          offsetX = e.clientX - rect.left;
+          offsetY = e.clientY - rect.top;
+          dragging = true;
+          e.currentTarget.setPointerCapture(e.pointerId);
+        });
+
+        window.addEventListener("pointermove", function (e) {
+          if (!dragging) return;
+          setCardPosition(e.clientX - offsetX, e.clientY - offsetY);
+        });
+
+        function endDrag() {
+          dragging = false;
+        }
+
+        window.addEventListener("pointerup", endDrag);
+        window.addEventListener("pointercancel", endDrag);
+
+        window.addEventListener("resize", function () {
+          if (card.classList.contains("is-hidden")) return;
+          var rect = card.getBoundingClientRect();
+          setCardPosition(rect.left, rect.top);
+        });
+
+        syncToggleUi();
       })();
     </script>
   </body>

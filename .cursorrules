@@ -1,5 +1,6 @@
 You are working in a git repo that deploys by pushing to GitHub:
-Repo: https://github.com/MatthewKehoeErgo/SBCI-Cursor-Prototype-v01
+Primary repo (origin): https://github.com/MatthewKehoeErgo/Matts-Ergo-Cursor-Prototype-v01
+Optional mirror remote (sbci): https://github.com/MatthewKehoeErgo/SBCI-Cursor-Prototype-v01
 Default branch: main
 
 RULE: When the user asks to "deploy", "publish", "push", or "sync" changes to GitHub:

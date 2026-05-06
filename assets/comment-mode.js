@@ -1,3 +1,16 @@
+import { supabaseInsert } from './supabase.js';
+
+let currentSessionId = null;
+
+async function startFeedbackSession() {
+  const [session] = await supabaseInsert('sessions', {
+    name: null
+  });
+
+  currentSessionId = session.id;
+  console.log('Feedback session started:', currentSessionId);
+}
+
 /**
  * Contextual comment mode for static prototypes (GitHub Pages).
  *
@@ -306,8 +319,11 @@
   function bindTrigger(el) {
     if (!el || el.dataset.commentModeBound) return;
     el.dataset.commentModeBound = "1";
-    el.addEventListener("click", function (ev) {
+    el.addEventListener("click", async function (ev) {
       ev.stopPropagation();
+      if (currentSessionId === null) {
+        await startFeedbackSession();
+      }
       toggleCommentModeFromTrigger();
     });
   }

@@ -1,0 +1,170 @@
+/**
+ * Comment mode: visual affordances while collaborators place feedback on the prototype.
+ * Layering stays below the floating Test Details card but above page content.
+ */
+
+/* Subtle full-screen tint — pointer-events none so clicks reach the page for placement */
+body.comment-mode-active::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: rgba(14, 67, 73, 0.07);
+  pointer-events: none;
+}
+
+html.comment-mode-active,
+html.comment-mode-active body {
+  cursor: crosshair;
+}
+
+/* Restore normal cursor over chrome that should not use crosshair */
+html.comment-mode-active #floating-test-card,
+html.comment-mode-active #floating-test-card *,
+html.comment-mode-active .comment-mode-pin-card,
+html.comment-mode-active .comment-mode-pin-card *,
+html.comment-mode-active .comment-mode-marker,
+html.comment-mode-active #comment-mode-hint {
+  cursor: auto;
+}
+
+html.comment-mode-active .floating-test-card__comment-btn {
+  cursor: pointer;
+}
+
+html.comment-mode-active .comment-mode-marker {
+  cursor: pointer;
+}
+
+html.comment-mode-active .comment-mode-submit {
+  cursor: pointer;
+}
+
+/* Fixed layer holds markers and cards; transparent to hits except on children */
+.comment-mode-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  pointer-events: none;
+}
+
+.comment-mode-pin-card,
+.comment-mode-marker {
+  pointer-events: auto;
+}
+
+/* Instruction strip — fixed bottom, non-blocking for placement */
+#comment-mode-hint.comment-mode-hint {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10060;
+  margin: 0;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark, #212529);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  max-width: min(92vw, 420px);
+  text-align: center;
+}
+
+/* Expanded comment editor anchored near the click point */
+.comment-mode-pin-card {
+  position: fixed;
+  z-index: 10055;
+  width: min(280px, calc(100vw - 32px));
+  padding: 12px;
+  background: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+}
+
+.comment-mode-pin-card label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dark, #212529);
+  margin-bottom: 6px;
+}
+
+.comment-mode-pin-card textarea {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 72px;
+  max-height: 140px;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  resize: vertical;
+  overflow-y: auto;
+}
+
+.comment-mode-pin-card textarea:focus-visible {
+  outline: 2px solid var(--primary-teal, #0e4349);
+  outline-offset: 1px;
+}
+
+.comment-mode-submit {
+  margin-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-teal, #0e4349);
+  background: #ffffff;
+  border: 2px solid #e0e0e0;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.comment-mode-submit:hover {
+  background: #f8f9fa;
+}
+
+.comment-mode-submit:focus-visible {
+  outline: 2px solid var(--primary-teal, #0e4349);
+  outline-offset: 2px;
+}
+
+/* Collapsed marker left after submit */
+.comment-mode-marker {
+  position: fixed;
+  z-index: 10055;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.comment-mode-marker img {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.comment-mode-marker:focus-visible {
+  outline: 2px solid var(--primary-teal, #0e4349);
+  outline-offset: 2px;
+}

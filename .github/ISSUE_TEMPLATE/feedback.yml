@@ -1,0 +1,17 @@
+name: Prototype feedback
+description: Feedback submitted from the interactive prototype (description may be prefilled when opened from the preview).
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking time to review the prototype.
+        If you arrived here via **Submit**, the fields below may already contain your notes — review and send when ready.
+
+  - type: textarea
+    id: feedback-body
+    attributes:
+      label: Feedback (prefilled when possible)
+      description: Edit anything before submitting.
+    validations:
+      required: false

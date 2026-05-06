@@ -1,0 +1,30 @@
+You are working in a git repo that deploys by pushing to GitHub:
+Repo: https://github.com/MatthewKehoeErgo/SBCI-Cursor-Prototype-v01
+Default branch: main
+
+RULE: When the user asks to "deploy", "publish", "push", or "sync" changes to GitHub:
+
+1) Verify repo state first
+- Run: git status -sb
+- Confirm we're on the intended branch (usually main) and see what changed.
+
+2) Never commit secrets or local-only files
+- Do NOT add: .env, *.key, *.pem, credentials files, local config, or large build artifacts.
+- Ensure node_modules/ and dist/ are not committed (use .gitignore).
+
+3) Keep commits small and readable
+- Stage intentionally: git add -A (or add specific paths if the change is targeted)
+- Commit message format:
+  - One short line describing intent, e.g. "Update dashboard layout"
+
+4) Push safely
+- If the change is small and the user explicitly wants it on main:
+  - git push origin main
+- Otherwise:
+  - Create a feature branch: feature/<short-name>
+  - Push: git push -u origin HEAD
+  - Open a PR to main and include a short summary + test plan.
+
+5) Post-push verification
+- Re-run: git status -sb to confirm clean working tree and upstream tracking.
+

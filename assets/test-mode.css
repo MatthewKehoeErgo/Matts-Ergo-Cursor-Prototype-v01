@@ -1,0 +1,348 @@
+/**
+ * Test Mode design system — tokens, typography, Testing Panel, Review Mode launcher,
+ * and prototype chrome used alongside comment placement (`comment-mode.css`).
+ */
+
+:root {
+  /* Core accent (icons, mask tint, primary testing emphasis) */
+  --test-mode-accent: #22c196;
+  --Test_Teal: var(--test-mode-accent);
+
+  /* Typography */
+  --test-mode-font-sans:
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    "Apple Color Emoji",
+    "Segoe UI Emoji";
+
+  /* Testing Panel (dark chrome) */
+  --test-mode-surface-panel: #1c1f24;
+  --test-mode-surface-raised: #232730;
+  --test-mode-surface-hover: #2c313b;
+  --test-mode-border-panel: #2f343c;
+  --test-mode-border-control: #3a414b;
+  --test-mode-border-control-hover: #4a5260;
+  --test-mode-text-on-panel: #f1f3f5;
+  --test-mode-accent-soft: #5fd6cc;
+  --test-mode-text-muted: #9aa0a6;
+  --test-mode-handle-dash: rgba(255, 255, 255, 0.12);
+  --test-mode-shadow-panel:
+    0 4px 24px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+  --test-mode-radius-panel: 8px;
+  --test-mode-radius-control: 6px;
+  --test-mode-z-panel: 10000;
+
+  /* Comment editor surfaces (dark) */
+  --test-mode-surface-dialog: #1f232a;
+  --test-mode-surface-input: #2b2f36;
+  --test-mode-pin-surface: #1f232a;
+  --test-mode-border-subtle: rgba(255, 255, 255, 0.14);
+  --test-mode-submit-fill: #35c0b3;
+  --test-mode-focus-ring: #35c0b3;
+
+  /* Comment-mode active affordance */
+  --test-mode-comment-active-ring: rgba(53, 192, 179, 0.35);
+
+  /* Crosshair tint */
+  --test-mode-placement-tint: rgba(14, 67, 73, 0.07);
+
+  /* Version banner (prototype) */
+  --test-mode-banner-bg: rgba(20, 22, 26, 0.78);
+  --test-mode-banner-border: rgba(95, 214, 204, 0.28);
+
+  /* Review Mode launcher — aligned with Testing Panel dark chrome */
+  --test-mode-launcher-bg: var(--test-mode-surface-raised);
+  --test-mode-launcher-text: var(--test-mode-text-on-panel);
+  --test-mode-launcher-border: var(--test-mode-border-control);
+  --test-mode-launcher-hover-bg: var(--test-mode-surface-hover);
+  --test-mode-launcher-hover-border: var(--test-mode-border-control-hover);
+  --test-mode-launcher-focus-ring: var(--test-mode-accent);
+  --test-mode-launcher-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Typography: Inter for all Test Mode UI                                      */
+/* -------------------------------------------------------------------------- */
+
+.btn-toggle-test-card,
+.btn-review-mode-launcher,
+#toggle-test-card,
+#floating-test-card,
+#floating-test-card *,
+.comment-mode-layer,
+.comment-mode-layer * {
+  font-family: var(--test-mode-font-sans);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Review Mode launcher (fixed bottom-right; hidden while panel open)          */
+/* -------------------------------------------------------------------------- */
+
+.btn-toggle-test-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--test-mode-launcher-text);
+  background: var(--test-mode-launcher-bg);
+  border: 2px solid var(--test-mode-launcher-border);
+  padding: 10px 16px;
+  border-radius: var(--test-mode-radius-control);
+  box-shadow: var(--test-mode-launcher-shadow);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-toggle-test-card:hover {
+  background: var(--test-mode-launcher-hover-bg);
+  border-color: var(--test-mode-launcher-hover-border);
+}
+
+.btn-toggle-test-card:focus-visible {
+  outline: 2px solid var(--test-mode-launcher-focus-ring);
+  outline-offset: 2px;
+}
+
+.btn-toggle-test-card.btn-review-mode-launcher {
+  position: fixed;
+  z-index: var(--test-mode-z-panel);
+  right: 24px;
+  bottom: 24px;
+  left: auto;
+  top: auto;
+}
+
+.btn-toggle-test-card.btn-review-mode-launcher.is-hidden {
+  display: none;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Testing Panel (floating card)                                             */
+/* Shared shell — dark SBCI prototype chrome is scoped under `#app-root` only */
+/* so the React wireframe (`#root`) keeps `FloatingTestCard.module.css` theme. */
+/* -------------------------------------------------------------------------- */
+
+.floating-test-card {
+  position: fixed;
+  z-index: var(--test-mode-z-panel);
+  width: min(320px, calc(100vw - 32px));
+  cursor: default;
+  user-select: none;
+}
+
+.floating-test-card.is-hidden {
+  display: none;
+}
+
+/* SBCI static prototype: dark panel + default bottom-right anchor before drag JS runs */
+#app-root #floating-test-card.floating-test-card {
+  right: 24px;
+  bottom: 24px;
+  left: auto;
+  top: auto;
+  margin: 0;
+  padding: 0 16px 16px;
+  background: var(--test-mode-surface-panel);
+  color: var(--test-mode-text-on-panel);
+  border: 1px solid var(--test-mode-border-panel);
+  border-radius: var(--test-mode-radius-panel);
+  box-shadow: var(--test-mode-shadow-panel);
+}
+
+#floating-test-card .floating-test-card__panel-close.comment-mode-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+}
+
+#app-root #floating-test-card .floating-test-card__handle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 10px 16px 8px;
+  cursor: grab;
+  touch-action: none;
+  border-bottom: 1px dashed var(--test-mode-handle-dash);
+}
+
+#floating-test-card .floating-test-card__handle {
+  padding-right: 36px;
+}
+
+#app-root #floating-test-card .floating-test-card__handle:active {
+  cursor: grabbing;
+}
+
+#app-root #floating-test-card .floating-test-card__grip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+#app-root #floating-test-card .floating-test-card__grip img {
+  display: block;
+  width: 18px;
+  height: 18px;
+}
+
+#app-root #floating-test-card .floating-test-card__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--test-mode-text-on-panel);
+}
+
+#floating-test-card .floating-test-card__title {
+  flex: 1;
+  min-width: 0;
+}
+
+#app-root #floating-test-card .floating-test-card__content {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#app-root #floating-test-card .floating-test-card__comment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--test-mode-accent-soft);
+  background: var(--test-mode-surface-raised);
+  border: 2px solid var(--test-mode-border-control);
+  padding: 6px 12px;
+  border-radius: var(--test-mode-radius-control);
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+#app-root #floating-test-card .floating-test-card__comment-btn:hover {
+  background: var(--test-mode-surface-hover);
+  border-color: var(--test-mode-border-control-hover);
+}
+
+#app-root #floating-test-card .floating-test-card__comment-btn:focus-visible {
+  outline: 2px solid var(--test-mode-accent-soft);
+  outline-offset: 2px;
+}
+
+#app-root #floating-test-card .floating-test-card__dropdown {
+  margin: 0;
+  border: 1px solid var(--test-mode-border-panel);
+  border-radius: var(--test-mode-radius-control);
+  background: var(--test-mode-surface-panel);
+}
+
+#app-root #floating-test-card .floating-test-card__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 11px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--test-mode-text-on-panel);
+  cursor: pointer;
+  list-style: none;
+  background: var(--test-mode-surface-raised);
+  user-select: none;
+}
+
+#app-root #floating-test-card .floating-test-card__summary::-webkit-details-marker {
+  display: none;
+}
+
+#app-root #floating-test-card .floating-test-card__caret {
+  flex-shrink: 0;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid var(--test-mode-text-muted);
+  transition: transform 0.2s ease;
+}
+
+#app-root #floating-test-card .floating-test-card__dropdown[open] .floating-test-card__caret {
+  transform: rotate(180deg);
+}
+
+#app-root #floating-test-card .floating-test-card__dropdown .floating-test-card__links {
+  margin: 0;
+  padding: 4px 10px 10px;
+  border-top: 1px solid var(--test-mode-border-panel);
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#app-root #floating-test-card .floating-test-card__links a {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--test-mode-accent-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+#app-root #floating-test-card .floating-test-card__links a:hover {
+  opacity: 0.85;
+}
+
+/* Masked “Add a comment” icon */
+#floating-test-card .floating-test-card__comment-icon {
+  flex-shrink: 0;
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+  background-color: var(--test-mode-accent);
+  mask-image: url("add_comment_icon_button.svg");
+  mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  -webkit-mask-image: url("add_comment_icon_button.svg");
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Prototype version banner (bottom-left)                                      */
+/* -------------------------------------------------------------------------- */
+
+.prototype-version-banner {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  z-index: 9999;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--test-mode-text-on-panel);
+  background: var(--test-mode-banner-bg);
+  border: 1px solid var(--test-mode-banner-border);
+  border-radius: var(--test-mode-radius-control);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}

@@ -1,3 +1,8 @@
+/**
+ * App shell. Test Mode design tokens + Testing Panel styles load via
+ * `assets/comment-mode.css` → `assets/test-mode.css` (see `react-app.html`).
+ */
+
 @font-face {
   font-family: "Flama";
   src: url("../assets/Font Files/Flama Regular.ttf") format("truetype");
@@ -34,6 +39,7 @@
 }
 
 :root {
+  --primary-teal: #0e4349;
   --bg: #ffffff;
   --bg-muted: #f4f4f4;
   --border: #bdbdbd;

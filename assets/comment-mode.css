@@ -1,6 +1,8 @@
+@import url("test-mode.css");
+
 /**
- * Comment mode: visual affordances while collaborators place feedback on the prototype.
- * Layering stays below the floating Test Details card but above page content.
+ * Comment placement mode — overlay layer, pin/editor chrome, instruction hint.
+ * Tokens & Testing Panel live in `test-mode.css` (Test Mode design system).
  */
 
 /* Subtle full-screen tint — pointer-events none so clicks reach the page for placement */
@@ -9,7 +11,7 @@ body.comment-mode-active::before {
   position: fixed;
   inset: 0;
   z-index: 9000;
-  background: rgba(14, 67, 73, 0.07);
+  background: var(--test-mode-placement-tint);
   pointer-events: none;
 }
 
@@ -19,8 +21,11 @@ html.comment-mode-active body {
 }
 
 /* Restore normal cursor over chrome that should not use crosshair */
+html.comment-mode-active #toggle-test-card,
 html.comment-mode-active #floating-test-card,
 html.comment-mode-active #floating-test-card *,
+html.comment-mode-active .comment-mode-editor-shell,
+html.comment-mode-active .comment-mode-editor-shell *,
 html.comment-mode-active .comment-mode-pin-card,
 html.comment-mode-active .comment-mode-pin-card *,
 html.comment-mode-active .comment-mode-marker,
@@ -41,9 +46,9 @@ html.comment-mode-active .comment-mode-submit {
 }
 
 .floating-test-card__comment-btn.is-comment-mode-active {
-  background: #e8f4f5;
-  border-color: var(--primary-teal, #0e4349);
-  box-shadow: inset 0 0 0 1px rgba(14, 67, 73, 0.12);
+  box-shadow:
+    inset 0 0 0 1px var(--test-mode-comment-active-ring),
+    0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 /* Fixed layer holds markers and cards; transparent to hits except on children */
@@ -57,6 +62,40 @@ html.comment-mode-active .comment-mode-submit {
 .comment-mode-pin-card,
 .comment-mode-marker {
   pointer-events: auto;
+}
+
+/* Full-screen shell groups editor chrome without blocking page clicks */
+.comment-mode-editor-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 10055;
+  pointer-events: none;
+}
+
+.comment-mode-editor-shell > * {
+  pointer-events: auto;
+}
+
+/* Click anchor pin (centered on the exact click point) */
+.comment-mode-editor-pin {
+  position: fixed;
+  z-index: 10057;
+  width: calc(56px * 0.7);
+  height: calc(56px * 0.7);
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: var(--test-mode-pin-surface);
+  border: 1px solid var(--test-mode-border-subtle);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.comment-mode-editor-pin img {
+  width: calc(24px * 1.4 * 1.4 * 0.7);
+  height: calc(24px * 1.4 * 1.4 * 0.7);
+  display: block;
 }
 
 /* Instruction strip — fixed bottom, non-blocking for placement */
@@ -73,7 +112,7 @@ html.comment-mode-active .comment-mode-submit {
   color: var(--text-dark, #212529);
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #dee2e6;
-  border-radius: 8px;
+  border-radius: var(--test-mode-radius-panel);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.12);
   pointer-events: none;
   max-width: min(92vw, 420px);
@@ -83,29 +122,30 @@ html.comment-mode-active .comment-mode-submit {
 /* Expanded comment editor anchored near the click point */
 .comment-mode-pin-card {
   position: fixed;
-  z-index: 10055;
-  width: min(280px, calc(100vw - 32px));
-  padding: 12px 12px 12px 12px;
-  padding-right: 36px;
-  background: #ffffff;
-  border: 1px solid #dee2e6;
-  border-radius: 8px;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+  z-index: 10056;
+  width: min(calc(560px * 0.7), calc((100vw - 120px) * 0.7));
+  padding: 12px 12px;
+  padding-right: 56px; /* space for submit button */
+  background: var(--test-mode-surface-dialog);
+  border: 1px solid var(--test-mode-border-subtle);
+  border-radius: var(--test-mode-radius-panel);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+}
+
+.comment-mode-pin-card.comment-mode-pin-card--has-delete {
+  padding-bottom: 52px;
 }
 
 .comment-mode-close {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 26px;
-  height: 26px;
+  top: 8px;
+  right: 8px;
+  width: calc(22px * 0.7);
+  height: calc(22px * 0.7);
   padding: 0;
   margin: 0;
   border: none;
   background: transparent;
-  color: #6c757d;
-  font-size: 20px;
-  line-height: 1;
   border-radius: 4px;
   cursor: pointer;
   display: inline-flex;
@@ -113,22 +153,19 @@ html.comment-mode-active .comment-mode-submit {
   justify-content: center;
 }
 
+.comment-mode-close img {
+  width: calc(16px * 0.7);
+  height: calc(16px * 0.7);
+  display: block;
+}
+
 .comment-mode-close:hover {
-  background: #f1f3f5;
-  color: var(--text-dark, #212529);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .comment-mode-close:focus-visible {
-  outline: 2px solid var(--primary-teal, #0e4349);
+  outline: 2px solid var(--test-mode-focus-ring);
   outline-offset: 1px;
-}
-
-.comment-mode-pin-card label {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-dark, #212529);
-  margin-bottom: 6px;
 }
 
 .comment-mode-pin-card textarea,
@@ -136,62 +173,126 @@ html.comment-mode-active .comment-mode-submit {
   display: block;
   width: 100%;
   box-sizing: border-box;
-  height: 96px;
-  min-height: 96px;
-  max-height: 96px;
-  padding: 8px 10px;
+  height: 144px;
+  min-height: 144px;
+  max-height: 144px;
+  padding: 10px 12px;
   font-family: inherit;
   font-size: 13px;
   line-height: 1.45;
-  border: 1px solid #ced4da;
-  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.92);
+  background: var(--test-mode-surface-input);
+  border: none;
+  outline: none;
+  border-radius: var(--test-mode-radius-control);
   resize: none;
   overflow-y: auto;
 }
 
-.comment-mode-pin-card textarea:focus-visible,
-.comment-mode-textarea:focus-visible {
-  outline: 2px solid var(--primary-teal, #0e4349);
-  outline-offset: 1px;
+.comment-mode-pin-card textarea::placeholder,
+.comment-mode-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .comment-mode-submit {
-  margin-top: 10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--primary-teal, #0e4349);
-  background: #ffffff;
-  border: 2px solid #e0e0e0;
-  padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.comment-mode-submit:hover {
-  background: #f8f9fa;
-}
-
-.comment-mode-submit:focus-visible {
-  outline: 2px solid var(--primary-teal, #0e4349);
-  outline-offset: 2px;
-}
-
-/* Collapsed marker left after submit */
-.comment-mode-marker {
-  position: fixed;
-  z-index: 10055;
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
   width: 36px;
   height: 36px;
   padding: 0;
   margin: 0;
-  border: 2px solid #e0e0e0;
-  border-radius: 8px;
-  background: #ffffff;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--test-mode-submit-fill);
+  border: none;
+  border-radius: 999px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.comment-mode-submit img {
+  width: 36px;
+  height: 36px;
+  display: block;
+}
+
+.comment-mode-submit:hover {
+  filter: brightness(1.05);
+}
+
+.comment-mode-submit:focus-visible {
+  outline: 2px solid var(--test-mode-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Delete — Material Symbols bin (delete); only on saved-comment editors */
+.comment-mode-delete {
+  position: absolute;
+  left: 10px;
+  bottom: 12px;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--test-mode-border-control);
+  border-radius: var(--test-mode-radius-control);
+  color: rgba(255, 255, 255, 0.82);
+  cursor: pointer;
+}
+
+.comment-mode-delete .material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  font-size: 22px;
+  line-height: 1;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+.comment-mode-delete:hover {
+  background: rgba(255, 80, 80, 0.15);
+  border-color: rgba(255, 120, 120, 0.45);
+  color: #ffb4b4;
+}
+
+.comment-mode-delete:focus-visible {
+  outline: 2px solid var(--test-mode-focus-ring);
+  outline-offset: 2px;
+}
+
+/*
+ * Placed comment pins only when Review Mode is on (#floating-test-card visible).
+ * Panel closed = `.is-hidden` on the card; launcher button does not drive marker visibility.
+ */
+body:not(:has(#floating-test-card:not(.is-hidden)))
+  .comment-mode-layer
+  .comment-mode-marker {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Collapsed marker — SVG carries circle + icon; button is chrome + shadow only */
+.comment-mode-marker {
+  position: fixed;
+  z-index: 10055;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.38);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -199,12 +300,12 @@ html.comment-mode-active .comment-mode-submit {
 }
 
 .comment-mode-marker img {
-  width: 20px;
-  height: 20px;
+  width: 48px;
+  height: 48px;
   display: block;
 }
 
 .comment-mode-marker:focus-visible {
-  outline: 2px solid var(--primary-teal, #0e4349);
+  outline: 2px solid var(--test-mode-accent);
   outline-offset: 2px;
 }

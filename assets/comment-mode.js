@@ -18,12 +18,23 @@
 import {
   supabaseInsert,
   supabasePatch,
+  supabaseDelete,
   fetchCommentsForPage,
 } from "./supabase.js";
 
 const COMMENTS_TABLE = "comments";
 const SESSION_STORAGE_KEY = "prototype-comments-session-id";
-const ICON_SRC = "assets/add_comment.svg";
+const ICON_SRC = "assets/Comment - Placed - Icon.svg";
+const SUBMIT_ICON_SRC = "assets/Submit Icon.svg";
+const CLOSE_ICON_SRC = "assets/close_small.svg";
+
+/**
+ * Outer diameter of `.comment-mode-editor-pin` (must match `comment-mode.css`;
+ * currently `calc(56px * 0.7)` — 30% smaller than the 56px base).
+ */
+const EDITOR_PIN_SIZE_PX = 56 * 0.7;
+/** Horizontal gap between pin edge and dialogue (px). */
+const EDITOR_CARD_GAP_PX = 16;
 
 /**
  * @type {{
@@ -31,7 +42,7 @@ const ICON_SRC = "assets/add_comment.svg";
  *   comments: Array<{id: number, x: number, y: number, text: string}>,
  *   layer: HTMLElement|null,
  *   hintEl: HTMLElement|null,
- *   openEditor: { card: HTMLElement, existing: any } | null,
+ *   openEditor: { shell: HTMLElement, existing: any } | null,
  * }}
  *
  * `openEditor` enforces "only one editor at a time" — checked when a click happens
@@ -131,9 +142,11 @@ function exitCommentMode() {
 
 function shouldIgnorePlacementTarget(el) {
   if (!el) return true;
+  if (el.closest("#toggle-test-card")) return true;
   if (el.closest("#floating-test-card")) return true;
   if (el.closest("#page-transition")) return true;
   if (el.closest(".prototype-version-banner")) return true;
+  if (el.closest(".comment-mode-editor-shell")) return true;
   if (el.closest(".comment-mode-pin-card")) return true;
   if (el.closest(".comment-mode-marker")) return true;
   if (el.closest("#comment-mode-hint")) return true;
@@ -149,36 +162,48 @@ function closeOpenEditor() {
   var entry = state.openEditor;
   if (!entry) return;
   state.openEditor = null;
-  if (entry.card && entry.card.parentNode) entry.card.remove();
+  if (entry.shell && entry.shell.parentNode) entry.shell.remove();
   if (entry.existing && entry.existing.id != null) {
     renderMarker(entry.existing);
   }
 }
 
+function createIconImg(src) {
+  var img = document.createElement("img");
+  img.src = src;
+  img.alt = "";
+  img.setAttribute("aria-hidden", "true");
+  return img;
+}
+
 /**
  * Insert or update a row in `comments` after the user submits the inline form.
+ *
+ * Payload contracts (must match the existing schema exactly):
+ *   INSERT — text, page_url, x_position, y_position, session_id
+ *            (created_at / updated_at are Postgres defaults — we don't send them)
+ *   PATCH  — text, updated_at
  */
 async function persistComment(record, isUpdate) {
-  var pageUrl = getPageUrlForQuery();
-  var sessionId = getOrCreateSessionId();
-  var now = new Date().toISOString();
+  var trimmed = record.text.trim();
 
   if (isUpdate) {
     await supabasePatch(COMMENTS_TABLE, record.id, {
-      text: record.text.trim(),
-      updated_at: now,
+      text: trimmed,
+      updated_at: new Date().toISOString(),
     });
     return;
   }
 
+  var pageUrl = getPageUrlForQuery();
+  var sessionId = getOrCreateSessionId();
+
   var rows = await supabaseInsert(COMMENTS_TABLE, {
-    text: record.text.trim(),
+    text: trimmed,
     page_url: pageUrl,
     x_position: record.x,
     y_position: record.y,
     session_id: sessionId,
-    created_at: now,
-    updated_at: now,
   });
   var inserted = Array.isArray(rows) ? rows[0] : rows;
   if (!inserted || inserted.id == null) {
@@ -227,6 +252,15 @@ function openCommentEditor(clientX, clientY, existing) {
       : "comment-field-new-" + Date.now();
   var initialText = existing ? existing.text : "";
 
+  var shell = document.createElement("div");
+  shell.className = "comment-mode-editor-shell";
+
+  var pin = document.createElement("div");
+  pin.className = "comment-mode-editor-pin";
+  pin.appendChild(createIconImg(ICON_SRC));
+  pin.style.left = clientX + "px";
+  pin.style.top = clientY + "px";
+
   var card = document.createElement("div");
   card.className = "comment-mode-pin-card";
   if (existing && existing.id != null) {
@@ -237,30 +271,45 @@ function openCommentEditor(clientX, clientY, existing) {
   closeBtn.type = "button";
   closeBtn.className = "comment-mode-close";
   closeBtn.setAttribute("aria-label", "Close comment");
-  closeBtn.textContent = "\u00d7";
-
-  var label = document.createElement("label");
-  label.setAttribute("for", fieldId);
-  label.textContent = "Add comment below";
+  closeBtn.appendChild(createIconImg(CLOSE_ICON_SRC));
 
   var ta = document.createElement("textarea");
   ta.id = fieldId;
   ta.className = "comment-mode-textarea";
   ta.setAttribute("maxlength", "180");
+  ta.setAttribute("placeholder", "Add a comment");
   ta.value = initialText;
 
   var submit = document.createElement("button");
   submit.type = "button";
   submit.className = "comment-mode-submit";
-  submit.textContent = "Submit";
+  submit.setAttribute("aria-label", "Submit comment");
+  submit.appendChild(createIconImg(SUBMIT_ICON_SRC));
+
+  var deleteBtn = null;
+  if (existing && existing.id != null) {
+    card.classList.add("comment-mode-pin-card--has-delete");
+    deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "comment-mode-delete";
+    deleteBtn.setAttribute("aria-label", "Delete comment");
+    deleteBtn.setAttribute("title", "Delete comment");
+    var binGlyph = document.createElement("span");
+    binGlyph.className = "material-symbols-outlined";
+    binGlyph.setAttribute("aria-hidden", "true");
+    binGlyph.textContent = "delete";
+    deleteBtn.appendChild(binGlyph);
+  }
 
   card.appendChild(closeBtn);
-  card.appendChild(label);
   card.appendChild(ta);
   card.appendChild(submit);
-  state.layer.appendChild(card);
+  if (deleteBtn) card.appendChild(deleteBtn);
+  shell.appendChild(pin);
+  shell.appendChild(card);
+  state.layer.appendChild(shell);
 
-  state.openEditor = { card: card, existing: existing || null };
+  state.openEditor = { shell: shell, existing: existing || null };
 
   closeBtn.addEventListener("click", function (ev) {
     ev.preventDefault();
@@ -269,14 +318,55 @@ function openCommentEditor(clientX, clientY, existing) {
   });
 
   var rect = card.getBoundingClientRect();
+  /* Pin is centered on the click; align dialogue top with pin top. */
+  var pinHalf = EDITOR_PIN_SIZE_PX / 2;
+  var pinTop = clientY - pinHalf;
+  /*
+   * Keep the pin uncovered: if the click is left of viewport center, open the
+   * dialogue to the right of the pin; if right of center, open it to the left.
+   */
+  var clickLeftOfCenter = clientX < window.innerWidth / 2;
+  var preferredLeft = clickLeftOfCenter
+    ? clientX + pinHalf + EDITOR_CARD_GAP_PX
+    : clientX - pinHalf - EDITOR_CARD_GAP_PX - rect.width;
+
   var pos = clampPanelPosition(
-    clientX + 8,
-    clientY + 8,
+    preferredLeft,
+    pinTop,
     rect.width,
     rect.height,
   );
   card.style.left = pos.left + "px";
   card.style.top = pos.top + "px";
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", async function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!existing || existing.id == null) return;
+      if (!window.confirm("Delete this comment?")) return;
+      try {
+        await supabaseDelete(COMMENTS_TABLE, existing.id);
+      } catch (err) {
+        console.error("Comment delete failed:", err);
+        alert("Could not delete this comment. Please try again.");
+        return;
+      }
+      state.comments = state.comments.filter(function (c) {
+        return c.id !== existing.id;
+      });
+      document
+        .querySelectorAll(
+          '.comment-mode-marker[data-db-id="' + existing.id + '"]',
+        )
+        .forEach(function (n) {
+          n.remove();
+        });
+      state.openEditor = null;
+      shell.remove();
+      exitCommentMode();
+    });
+  }
 
   submit.addEventListener("click", async function (ev) {
     ev.stopPropagation();
@@ -315,7 +405,7 @@ function openCommentEditor(clientX, clientY, existing) {
       });
 
     state.openEditor = null;
-    card.remove();
+    shell.remove();
     renderMarker(record);
     exitCommentMode();
   });
@@ -331,9 +421,9 @@ function renderMarker(record) {
   btn.dataset.dbId = String(record.id);
   btn.setAttribute("aria-label", "View or edit comment");
   btn.style.left =
-    clampPanelPosition(record.x - 18, record.y - 18, 36, 36).left + "px";
+    clampPanelPosition(record.x - 24, record.y - 24, 48, 48).left + "px";
   btn.style.top =
-    clampPanelPosition(record.x - 18, record.y - 18, 36, 36).top + "px";
+    clampPanelPosition(record.x - 24, record.y - 24, 48, 48).top + "px";
 
   var img = document.createElement("img");
   img.src = ICON_SRC;
@@ -361,7 +451,7 @@ function onDocumentClick(ev) {
   // (including outside any other comment chrome). Swallow this click so it doesn't
   // immediately open a new editor — the user must click again to start a new one.
   if (state.openEditor) {
-    if (ev.target.closest(".comment-mode-pin-card")) return;
+    if (ev.target.closest(".comment-mode-editor-shell")) return;
     ev.preventDefault();
     ev.stopPropagation();
     closeOpenEditor();

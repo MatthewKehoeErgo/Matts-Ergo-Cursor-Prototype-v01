@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { FloatingTestCard } from "./FloatingTestCard.jsx";
 import styles from "./Layout.module.css";
@@ -10,8 +9,6 @@ const nav = [
 ];
 
 export function Layout() {
-  const [showTestCard, setShowTestCard] = useState(true);
-
   return (
     <>
       <div className={styles.shell}>
@@ -50,14 +47,6 @@ export function Layout() {
             </div>
             <div className={styles.topbarMeta}>
               <span className={styles.badge}>Org: Demo Industries</span>
-              <button
-                type="button"
-                className={styles.ghostBtn}
-                onClick={() => setShowTestCard((v) => !v)}
-                aria-pressed={showTestCard}
-              >
-                {showTestCard ? "Hide test card" : "Show test card"}
-              </button>
               <button type="button" className={styles.ghostBtn}>
                 Sign out
               </button>
@@ -69,7 +58,7 @@ export function Layout() {
           </main>
         </div>
       </div>
-      {showTestCard ? <FloatingTestCard /> : null}
+      <FloatingTestCard />
     </>
   );
 }

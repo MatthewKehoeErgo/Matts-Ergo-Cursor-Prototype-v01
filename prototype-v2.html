@@ -272,213 +272,6 @@
         flex-shrink: 0;
       }
 
-      .btn-toggle-test-card {
-        display: inline-flex;
-        align-items: center;
-        font-family: inherit;
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--primary-teal);
-        background: var(--white);
-        border: 2px solid #e0e0e0;
-        padding: 12px 22px;
-        border-radius: 6px;
-        cursor: pointer;
-        white-space: nowrap;
-      }
-
-      .btn-toggle-test-card:hover {
-        background: #f8f9fa;
-        border-color: #e0e0e0;
-      }
-
-      .btn-toggle-test-card:focus-visible {
-        outline: 2px solid var(--primary-teal);
-        outline-offset: 2px;
-      }
-
-      .floating-test-card {
-        position: fixed;
-        z-index: 10000;
-        right: 24px;
-        bottom: 24px;
-        left: auto;
-        top: auto;
-        width: min(320px, calc(100vw - 32px));
-        margin: 0;
-        padding: 0 16px 16px;
-        background: var(--white);
-        border: 1px solid #dee2e6;
-        border-radius: var(--border-radius);
-        box-shadow:
-          0 4px 24px rgba(0, 0, 0, 0.08),
-          0 2px 8px rgba(0, 0, 0, 0.06);
-        cursor: default;
-        user-select: none;
-      }
-
-      .floating-test-card.is-hidden {
-        display: none;
-      }
-
-      .floating-test-card__handle {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 0 -16px;
-        padding: 10px 16px 8px;
-        cursor: grab;
-        touch-action: none;
-        border-bottom: 1px dashed #dee2e6;
-      }
-
-      .floating-test-card__handle:active {
-        cursor: grabbing;
-      }
-
-      .floating-test-card__grip {
-        flex-shrink: 0;
-        width: 10px;
-        height: 14px;
-        border-radius: 2px;
-        background: repeating-linear-gradient(
-          to bottom,
-          #9e9e9e,
-          #9e9e9e 2px,
-          transparent 2px,
-          transparent 4px
-        );
-        opacity: 0.65;
-      }
-
-      .floating-test-card__title {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        color: var(--text-dark);
-      }
-
-      .floating-test-card__content {
-        margin-top: 10px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-      }
-
-      .floating-test-card__comment-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        font-family: inherit;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--primary-teal);
-        background: var(--white);
-        border: 2px solid #e0e0e0;
-        padding: 6px 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        align-self: flex-start;
-      }
-
-      .floating-test-card__comment-btn:hover {
-        background: #f8f9fa;
-        border-color: #e0e0e0;
-      }
-
-      .floating-test-card__comment-btn:focus-visible {
-        outline: 2px solid var(--primary-teal);
-        outline-offset: 2px;
-      }
-
-      .floating-test-card__comment-btn img {
-        flex-shrink: 0;
-        display: block;
-        width: 18px;
-        height: 18px;
-      }
-
-      .floating-test-card__dropdown {
-        margin: 0;
-        border: 1px solid #dee2e6;
-        border-radius: 6px;
-        background: var(--white);
-      }
-
-      .floating-test-card__summary {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 9px 11px;
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-dark);
-        cursor: pointer;
-        list-style: none;
-        background: #f8f9fa;
-        user-select: none;
-      }
-
-      .floating-test-card__summary::-webkit-details-marker {
-        display: none;
-      }
-
-      .floating-test-card__caret {
-        flex-shrink: 0;
-        width: 0;
-        height: 0;
-        border-left: 5px solid transparent;
-        border-right: 5px solid transparent;
-        border-top: 6px solid var(--text-grey);
-        transition: transform 0.2s ease;
-      }
-
-      .floating-test-card__dropdown[open] .floating-test-card__caret {
-        transform: rotate(180deg);
-      }
-
-      .floating-test-card__dropdown .floating-test-card__links {
-        margin: 0;
-        padding: 4px 10px 10px;
-        border-top: 1px solid #e9ecef;
-        list-style: none;
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-
-      .floating-test-card__links a {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--primary-teal);
-        text-decoration: underline;
-        text-underline-offset: 2px;
-      }
-
-      .floating-test-card__links a:hover {
-        opacity: 0.85;
-      }
-
-      .prototype-version-banner {
-        position: fixed;
-        bottom: 16px;
-        left: 16px;
-        z-index: 9999;
-        padding: 8px 14px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.03em;
-        color: var(--text-dark);
-        background: rgba(255, 255, 255, 0.78);
-        border: 1px solid rgba(14, 67, 73, 0.18);
-        border-radius: 6px;
-        box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
-        backdrop-filter: blur(8px);
-        pointer-events: none;
-      }
-
       /* —— Version switch loading overlay —— */
       .page-transition {
         position: fixed;
@@ -1141,6 +934,12 @@
         }
       }
     </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="assets/comment-mode.css" />
   </head>
   <body
@@ -1207,9 +1006,6 @@
             </span>
           </div>
           <div class="top-header-actions">
-            <button type="button" class="btn-toggle-test-card" id="toggle-test-card" aria-pressed="true">
-              Hide test card
-            </button>
             <button type="button" class="btn-logout">Log out</button>
           </div>
         </header>
@@ -1368,23 +1164,42 @@
         </div>
       </div>
 
+      <button
+        type="button"
+        class="btn-toggle-test-card btn-review-mode-launcher"
+        id="toggle-test-card"
+      >
+        Review Mode
+      </button>
+
       <aside
         id="floating-test-card"
-        class="floating-test-card"
-        aria-label="Draggable test card"
+        class="floating-test-card is-hidden"
+        aria-label="Draggable testing panel"
+        aria-hidden="true"
       >
+        <button
+          type="button"
+          class="comment-mode-close floating-test-card__panel-close"
+          id="close-test-card"
+          aria-label="Close testing panel"
+        >
+          <img src="assets/close_small.svg" alt="" aria-hidden="true" />
+        </button>
         <div class="floating-test-card__handle" role="presentation">
-          <span class="floating-test-card__grip" aria-hidden="true"></span>
-          <h2 class="floating-test-card__title">Test Details</h2>
+          <span class="floating-test-card__grip" aria-hidden="true">
+            <img src="assets/drag_pan.svg" alt="" width="18" height="18" />
+          </span>
+          <h2 class="floating-test-card__title">Review Mode</h2>
         </div>
         <div class="floating-test-card__content">
           <button type="button" class="floating-test-card__comment-btn">
-            <img src="assets/add_comment.svg" alt="" width="18" height="18" />
+            <span class="floating-test-card__comment-icon" aria-hidden="true"></span>
             Add a comment
           </button>
           <details class="floating-test-card__dropdown">
             <summary class="floating-test-card__summary">
-              <span>Prototype Version</span>
+              <span>Prototype — Version 2</span>
               <span class="floating-test-card__caret" aria-hidden="true"></span>
             </summary>
             <ul class="floating-test-card__links">
@@ -1551,7 +1366,9 @@
       (function () {
         var card = document.getElementById("floating-test-card");
         var toggleBtn = document.getElementById("toggle-test-card");
+        var panelClose = document.getElementById("close-test-card");
         var handle = card ? card.querySelector(".floating-test-card__handle") : null;
+        var detailsDropdown = card ? card.querySelector(".floating-test-card__dropdown") : null;
         if (!card || !toggleBtn || !handle) return;
 
         var dragging = false;
@@ -1577,6 +1394,15 @@
           card.style.bottom = "auto";
         }
 
+        function nudgeCardIntoViewport() {
+          var margin = 24;
+          var rect = card.getBoundingClientRect();
+          var maxBottom = window.innerHeight - margin;
+          if (rect.bottom <= maxBottom) return;
+          var overflow = rect.bottom - maxBottom;
+          setCardPosition(rect.left, rect.top - overflow);
+        }
+
         function placeBottomRight() {
           var w = card.offsetWidth || 280;
           var h = card.offsetHeight || 180;
@@ -1584,19 +1410,29 @@
           setCardPosition(window.innerWidth - w - m, window.innerHeight - h - m);
         }
 
-        function syncToggleUi() {
-          var hidden = card.classList.contains("is-hidden");
-          toggleBtn.setAttribute("aria-pressed", hidden ? "false" : "true");
-          toggleBtn.textContent = hidden ? "Show test card" : "Hide test card";
+        function openPanel() {
+          card.classList.remove("is-hidden");
+          card.setAttribute("aria-hidden", "false");
+          toggleBtn.classList.add("is-hidden");
+          requestAnimationFrame(placeBottomRight);
+        }
+
+        function closePanel() {
+          card.classList.add("is-hidden");
+          card.setAttribute("aria-hidden", "true");
+          toggleBtn.classList.remove("is-hidden");
         }
 
         toggleBtn.addEventListener("click", function () {
-          card.classList.toggle("is-hidden");
-          syncToggleUi();
-          if (!card.classList.contains("is-hidden")) {
-            requestAnimationFrame(placeBottomRight);
-          }
+          openPanel();
         });
+
+        if (panelClose) {
+          panelClose.addEventListener("click", function (e) {
+            e.stopPropagation();
+            closePanel();
+          });
+        }
 
         handle.addEventListener("pointerdown", function (e) {
           if (e.button !== 0) return;
@@ -1624,9 +1460,14 @@
           placeBottomRight();
         });
 
-        placeBottomRight();
-
-        syncToggleUi();
+        if (detailsDropdown) {
+          detailsDropdown.addEventListener("toggle", function () {
+            if (!detailsDropdown.open) return;
+            requestAnimationFrame(function () {
+              requestAnimationFrame(nudgeCardIntoViewport);
+            });
+          });
+        }
       })();
     </script>
     <script type="module" src="assets/comment-mode.js"></script>

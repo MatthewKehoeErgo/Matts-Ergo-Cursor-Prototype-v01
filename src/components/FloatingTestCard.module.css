@@ -1,3 +1,9 @@
+/* Light-theme panel: make white SVG close glyph visible on pale chrome */
+.panelClose img {
+  filter: brightness(0);
+  opacity: 0.65;
+}
+
 .card {
   position: fixed;
   z-index: 10000;
@@ -31,17 +37,18 @@
 
 .grip {
   flex-shrink: 0;
-  width: 10px;
-  height: 14px;
-  border-radius: 2px;
-  background: repeating-linear-gradient(
-    to bottom,
-    var(--wire-dash),
-    var(--wire-dash) 2px,
-    transparent 2px,
-    transparent 4px
-  );
-  opacity: 0.65;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+
+.grip img {
+  display: block;
+  width: 18px;
+  height: 18px;
+  filter: brightness(0);
+  opacity: 0.42;
 }
 
 .heading {
@@ -83,13 +90,6 @@
 .commentBtn:focus-visible {
   outline: 2px solid var(--accent-fill);
   outline-offset: 2px;
-}
-
-.commentBtn img {
-  flex-shrink: 0;
-  display: block;
-  width: 18px;
-  height: 18px;
 }
 
 .dropdown {

@@ -6,6 +6,7 @@ import react from "@vitejs/plugin-react";
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
+  base: "/Matts-Ergo-Cursor-Prototype-v01/",
   plugins: [react()],
   server: {
     open: true,

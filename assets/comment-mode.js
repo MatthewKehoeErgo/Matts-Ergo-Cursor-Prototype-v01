@@ -13,6 +13,7 @@
  * - `session_id` — UUID string in localStorage (`SESSION_STORAGE_KEY`), reused for all rows.
  * - Inserts use `text`, `page_url`, `x_position`, `y_position`, `session_id`.
  * - Updates set `text` and `updated_at` (ISO string) for the row `id`.
+ * - `text` encodes optional name, position, and comment body (see serializeStoredComment).
  */
 
 import {
@@ -39,7 +40,14 @@ const EDITOR_CARD_GAP_PX = 16;
 /**
  * @type {{
  *   commentMode: boolean,
- *   comments: Array<{id: number, x: number, y: number, text: string}>,
+ *   comments: Array<{
+ *     id: number,
+ *     x: number,
+ *     y: number,
+ *     text: string,
+ *     authorName: string,
+ *     authorPosition: string,
+ *   }>,
  *   layer: HTMLElement|null,
  *   hintEl: HTMLElement|null,
  *   openEditor: { shell: HTMLElement, existing: any } | null,
@@ -176,6 +184,56 @@ function createIconImg(src) {
   return img;
 }
 
+function sanitizeMetaLine(s) {
+  return String(s || "").replace(/\r?\n/g, " ").trim();
+}
+
+/**
+ * Pack name, position, and comment body into the single `text` column (no DB migration).
+ * Legacy rows without `<<META>>` parse as body-only.
+ */
+function serializeStoredComment(authorName, authorPosition, body) {
+  var n = sanitizeMetaLine(authorName);
+  var p = sanitizeMetaLine(authorPosition);
+  var b = String(body || "").trim();
+  return (
+    "<<META>>\n" +
+    "name:" +
+    n +
+    "\n" +
+    "position:" +
+    p +
+    "\n" +
+    "<<BODY>>\n" +
+    b
+  );
+}
+
+function parseStoredComment(raw) {
+  if (typeof raw !== "string" || raw.indexOf("<<META>>\n") !== 0) {
+    return {
+      authorName: "",
+      authorPosition: "",
+      body: raw || "",
+    };
+  }
+  var sep = "\n<<BODY>>\n";
+  var idx = raw.indexOf(sep);
+  if (idx === -1) {
+    return { authorName: "", authorPosition: "", body: raw };
+  }
+  var metaBlock = raw.slice("<<META>>\n".length, idx);
+  var body = raw.slice(idx + sep.length);
+  var authorName = "";
+  var authorPosition = "";
+  metaBlock.split("\n").forEach(function (line) {
+    if (line.indexOf("name:") === 0) authorName = line.slice(5).trim();
+    else if (line.indexOf("position:") === 0)
+      authorPosition = line.slice(9).trim();
+  });
+  return { authorName: authorName, authorPosition: authorPosition, body: body };
+}
+
 /**
  * Insert or update a row in `comments` after the user submits the inline form.
  *
@@ -183,13 +241,19 @@ function createIconImg(src) {
  *   INSERT — text, page_url, x_position, y_position, session_id
  *            (created_at / updated_at are Postgres defaults — we don't send them)
  *   PATCH  — text, updated_at
+ *
+ * `text` stores serialized name, position, and body via {@link serializeStoredComment}.
  */
 async function persistComment(record, isUpdate) {
-  var trimmed = record.text.trim();
+  var storageText = serializeStoredComment(
+    record.authorName,
+    record.authorPosition,
+    record.text,
+  );
 
   if (isUpdate) {
     await supabasePatch(COMMENTS_TABLE, record.id, {
-      text: trimmed,
+      text: storageText,
       updated_at: new Date().toISOString(),
     });
     return;
@@ -199,7 +263,7 @@ async function persistComment(record, isUpdate) {
   var sessionId = getOrCreateSessionId();
 
   var rows = await supabaseInsert(COMMENTS_TABLE, {
-    text: trimmed,
+    text: storageText,
     page_url: pageUrl,
     x_position: record.x,
     y_position: record.y,
@@ -231,11 +295,15 @@ async function loadCommentsFromSupabase() {
   state.comments = [];
   ensureLayer();
   rows.forEach(function (row) {
+    var raw = row.text || "";
+    var parsed = parseStoredComment(raw);
     var rec = {
       id: row.id,
       x: Number(row.x_position),
       y: Number(row.y_position),
-      text: row.text || "",
+      text: parsed.body,
+      authorName: parsed.authorName,
+      authorPosition: parsed.authorPosition,
     };
     state.comments.push(rec);
     renderMarker(rec);
@@ -250,7 +318,25 @@ function openCommentEditor(clientX, clientY, existing) {
     existing && existing.id != null
       ? "comment-field-" + existing.id
       : "comment-field-new-" + Date.now();
-  var initialText = existing ? existing.text : "";
+  var initialBody = "";
+  var initialName = "";
+  var initialPosition = "";
+  if (existing) {
+    if (
+      existing.authorName !== undefined ||
+      existing.authorPosition !== undefined
+    ) {
+      initialBody = existing.text != null ? existing.text : "";
+      initialName = existing.authorName != null ? existing.authorName : "";
+      initialPosition =
+        existing.authorPosition != null ? existing.authorPosition : "";
+    } else {
+      var fp = parseStoredComment(existing.text || "");
+      initialBody = fp.body;
+      initialName = fp.authorName;
+      initialPosition = fp.authorPosition;
+    }
+  }
 
   var shell = document.createElement("div");
   shell.className = "comment-mode-editor-shell";
@@ -273,12 +359,37 @@ function openCommentEditor(clientX, clientY, existing) {
   closeBtn.setAttribute("aria-label", "Close comment");
   closeBtn.appendChild(createIconImg(CLOSE_ICON_SRC));
 
+  var fields = document.createElement("div");
+  fields.className = "comment-mode-pin-fields";
+
+  var nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "comment-mode-name-input";
+  nameInput.setAttribute("placeholder", "Add your name");
+  nameInput.setAttribute("aria-label", "Your name");
+  nameInput.setAttribute("maxlength", "120");
+  nameInput.setAttribute("autocomplete", "name");
+  nameInput.value = initialName;
+
+  var positionInput = document.createElement("input");
+  positionInput.type = "text";
+  positionInput.className = "comment-mode-position-input";
+  positionInput.setAttribute("placeholder", "Add your position");
+  positionInput.setAttribute("aria-label", "Your position");
+  positionInput.setAttribute("maxlength", "120");
+  positionInput.setAttribute("autocomplete", "organization-title");
+  positionInput.value = initialPosition;
+
   var ta = document.createElement("textarea");
   ta.id = fieldId;
   ta.className = "comment-mode-textarea";
   ta.setAttribute("maxlength", "180");
   ta.setAttribute("placeholder", "Add a comment");
-  ta.value = initialText;
+  ta.value = initialBody;
+
+  fields.appendChild(nameInput);
+  fields.appendChild(positionInput);
+  fields.appendChild(ta);
 
   var submit = document.createElement("button");
   submit.type = "button";
@@ -302,7 +413,7 @@ function openCommentEditor(clientX, clientY, existing) {
   }
 
   card.appendChild(closeBtn);
-  card.appendChild(ta);
+  card.appendChild(fields);
   card.appendChild(submit);
   if (deleteBtn) card.appendChild(deleteBtn);
   shell.appendChild(pin);
@@ -370,8 +481,8 @@ function openCommentEditor(clientX, clientY, existing) {
 
   submit.addEventListener("click", async function (ev) {
     ev.stopPropagation();
-    var text = ta.value;
-    if (!text.trim()) {
+    var bodyText = ta.value;
+    if (!bodyText.trim()) {
       ta.focus();
       return;
     }
@@ -381,7 +492,9 @@ function openCommentEditor(clientX, clientY, existing) {
       id: existing && existing.id != null ? existing.id : null,
       x: existing && existing.id != null ? existing.x : clientX,
       y: existing && existing.id != null ? existing.y : clientY,
-      text: text,
+      text: bodyText.trim(),
+      authorName: nameInput.value.trim(),
+      authorPosition: positionInput.value.trim(),
     };
 
     try {
@@ -410,7 +523,7 @@ function openCommentEditor(clientX, clientY, existing) {
     exitCommentMode();
   });
 
-  ta.focus();
+  nameInput.focus();
 }
 
 function renderMarker(record) {

@@ -1,64 +1,222 @@
+import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { FloatingTestCard } from "./FloatingTestCard.jsx";
-import styles from "./Layout.module.css";
 
-const nav = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/services", label: "Services" },
-  { to: "/support", label: "Support" },
+const MQ = "(max-width: 1200px)";
+
+/**
+ * SBCI Hub shell — uses global classes from `src/styles/sbci-hub.css`
+ * (extracted from legacy `sbci-hub-v1.html`).
+ */
+const NAV_ITEMS = [
+  {
+    kind: "route",
+    to: "/dashboard",
+    label: "Home",
+    icon: "home",
+    end: true,
+  },
+  {
+    kind: "route",
+    to: "/services",
+    label: "Your Applications",
+    icon: "assignment",
+    end: false,
+  },
+  {
+    kind: "stub",
+    label: "Your Account",
+    icon: "account_circle",
+  },
+  {
+    kind: "stub",
+    label: "Your Documents",
+    icon: "folder",
+  },
+  {
+    kind: "route",
+    to: "/support",
+    label: "Help & FAQs",
+    icon: "help",
+    end: false,
+  },
 ];
 
 export function Layout() {
+  const [navOpen, setNavOpen] = useState(false);
+  const mqRef = useRef(
+    typeof window !== "undefined" ? window.matchMedia(MQ) : null,
+  );
+
+  const closeNav = useCallback(() => {
+    setNavOpen(false);
+  }, []);
+
+  const toggleNav = useCallback(() => {
+    setNavOpen((o) => !o);
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia(MQ);
+    mqRef.current = mq;
+    const onResizeMode = () => {
+      if (!mq.matches && navOpen) closeNav();
+    };
+    mq.addEventListener("change", onResizeMode);
+    return () => mq.removeEventListener("change", onResizeMode);
+  }, [navOpen, closeNav]);
+
+  useEffect(() => {
+    const mq = mqRef.current;
+    if (!mq?.matches || !navOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [navOpen]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const mq = mqRef.current;
+      if (
+        e.key === "Escape" &&
+        mq?.matches &&
+        navOpen
+      ) {
+        e.preventDefault();
+        closeNav();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [navOpen, closeNav]);
+
   return (
     <>
-      <div className={styles.shell}>
-        <aside className={styles.sidebar} aria-label="Primary">
-          <div className={styles.brand}>
-            <span className={styles.brandMark} aria-hidden />
-            <span className={styles.brandText}>Acme</span>
-            <span className={styles.brandSub}>customer portal</span>
+      <div
+        id="app-root"
+        className={["app", navOpen ? "nav-open" : ""].filter(Boolean).join(" ")}
+      >
+        <aside id="primary-nav" className="sidebar" aria-label="Primary">
+          <div className="sidebar__mobile-header">
+            <button
+              type="button"
+              className="sidebar-close"
+              id="sidebar-close"
+              aria-label="Close menu"
+              onClick={() => {
+                if (mqRef.current?.matches) closeNav();
+              }}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                close
+              </span>
+            </button>
           </div>
-          <nav className={styles.nav}>
-            {nav.map((item) => (
+          {NAV_ITEMS.map((item) => {
+            if (item.kind === "stub") {
+              return (
+                <button
+                  key={item.label}
+                  type="button"
+                  className="nav-item"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  <span
+                    className="material-symbols-outlined nav-item__icon"
+                    aria-hidden="true"
+                  >
+                    {item.icon}
+                  </span>
+                  {item.label}
+                </button>
+              );
+            }
+            return (
               <NavLink
                 key={item.to}
                 to={item.to}
+                end={item.end}
                 className={({ isActive }) =>
-                  [styles.navLink, isActive ? styles.navLinkActive : ""].join(" ")
+                  ["nav-item", isActive ? "nav-item--active" : ""]
+                    .filter(Boolean)
+                    .join(" ")
                 }
-                end={item.to === "/dashboard"}
+                onClick={() => {
+                  if (mqRef.current?.matches) closeNav();
+                }}
               >
+                <span
+                  className="material-symbols-outlined nav-item__icon"
+                  aria-hidden="true"
+                >
+                  {item.icon}
+                </span>
                 {item.label}
               </NavLink>
-            ))}
-          </nav>
-          <div className={styles.sidebarFoot}>
-            <div className={styles.placeholderSm}>User menu</div>
-          </div>
+            );
+          })}
         </aside>
 
-        <div className={styles.mainCol}>
-          <header className={styles.topbar}>
-            <div className={styles.search}>
-              <span className={styles.searchLabel}>Search</span>
-              <div className={styles.searchField} role="presentation">
-                Find orders, invoices, tickets…
-              </div>
+        <button
+          type="button"
+          className="nav-overlay"
+          id="nav-overlay"
+          aria-label="Close menu"
+          aria-hidden={navOpen ? "false" : "true"}
+          tabIndex={navOpen ? undefined : -1}
+          onClick={() => {
+            if (mqRef.current?.matches) closeNav();
+          }}
+        />
+
+        <div className="main-column">
+          <header className="top-header">
+            <button
+              type="button"
+              className="nav-burger"
+              id="nav-burger"
+              aria-label="Open menu"
+              aria-expanded={navOpen}
+              aria-controls="primary-nav"
+              onClick={() => {
+                if (!mqRef.current?.matches) return;
+                toggleNav();
+              }}
+            >
+              <span className="material-symbols-outlined" aria-hidden="true">
+                menu
+              </span>
+            </button>
+            <div className="logo-wrap">
+              <span className="logo">
+                <img
+                  src="/assets/sbci_logo_Without_Text.jpg"
+                  alt="SBCI"
+                  width="55"
+                  height="35"
+                />
+              </span>
             </div>
-            <div className={styles.topbarMeta}>
-              <span className={styles.badge}>Org: Demo Industries</span>
-              <button type="button" className={styles.ghostBtn}>
-                Sign out
+            <div className="top-header-actions">
+              <button type="button" className="btn-logout">
+                Log out
               </button>
             </div>
           </header>
 
-          <main className={styles.content}>
+          <div className="content-scroll">
             <Outlet />
-          </main>
+          </div>
+        </div>
+        <FloatingTestCard />
+        <div className="prototype-version-banner" role="status">
+          Prototype — Version 2
         </div>
       </div>
-      <FloatingTestCard />
     </>
   );
 }

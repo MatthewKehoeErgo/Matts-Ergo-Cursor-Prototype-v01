@@ -1,0 +1,10 @@
+Prototype source of truth
+==========================
+
+The React app served at / (root index.html + Vite) is the authoritative prototype.
+Use http://localhost:5173/ for development.
+
+Legacy static HTML files (e.g. sbci-hub-v1.html, prototype-v2.html, react-app.html redirect)
+are kept for reference and parity checks only; they do not receive new features.
+
+SBCI global styles live in src/styles/sbci-hub.css (extracted from the legacy static hub).

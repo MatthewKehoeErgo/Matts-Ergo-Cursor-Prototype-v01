@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import closeSmallIcon from "../../assets/close_small.svg?url";
 import dragPanIcon from "../../assets/drag_pan.svg?url";
-import styles from "./FloatingTestCard.module.css";
 
 const CARD_MARGIN = 24;
 
 function currentPrototypeVersionLabel() {
-  if (typeof window === "undefined") return "Prototype — Version 1";
+  if (typeof window === "undefined") return "Prototype — Version 2";
   const file = window.location.pathname.split("/").pop()?.toLowerCase() ?? "";
-  return file === "prototype-v2.html"
-    ? "Prototype — Version 2"
-    : "Prototype — Version 1";
+  return file === "sbci-hub-v1.html"
+    ? "Prototype — Version 1"
+    : "Prototype — Version 2";
 }
 
 export function FloatingTestCard() {
@@ -18,7 +18,16 @@ export function FloatingTestCard() {
   const draggingRef = useRef(false);
   const offsetRef = useRef({ x: 0, y: 0 });
   const [pos, setPos] = useState({ x: 0, y: 0 });
-  const [panelOpen, setPanelOpen] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(() => import.meta.env.DEV);
+
+  const openPanel = useCallback(() => {
+    setPanelOpen(true);
+  }, []);
+
+  const closePanel = useCallback(() => {
+    draggingRef.current = false;
+    setPanelOpen(false);
+  }, []);
 
   const clampPosition = useCallback((nextX, nextY) => {
     const el = rootRef.current;
@@ -86,11 +95,7 @@ export function FloatingTestCard() {
       href.split("/").pop()?.split("?")[0]?.toLowerCase() ?? "";
     const here =
       window.location.pathname.split("/").pop()?.toLowerCase() ?? "";
-    if (
-      targetFile === here ||
-      (here === "" && targetFile === "index.html") ||
-      (here === "react-app.html" && targetFile === "index.html")
-    ) {
+    if (targetFile === here) {
       return;
     }
     sessionStorage.setItem("sbci-version-transition", "1");
@@ -126,80 +131,93 @@ export function FloatingTestCard() {
 
   return (
     <>
-      <button
-        type="button"
-        id="toggle-test-card"
-        className={`btn-toggle-test-card btn-review-mode-launcher ${panelOpen ? "is-hidden" : ""}`}
-        onClick={() => setPanelOpen(true)}
-      >
-        Review Mode
-      </button>
-      <aside
-        ref={rootRef}
-        id="floating-test-card"
-        className={`${styles.card} floating-test-card ${panelOpen ? "" : "is-hidden"}`}
-        style={{ left: pos.x, top: pos.y }}
-        aria-hidden={!panelOpen}
-        aria-label="Draggable testing panel"
-      >
+      {panelOpen ? (
+        <aside
+          ref={rootRef}
+          id="floating-test-card"
+          className="floating-test-card"
+          style={{ left: pos.x, top: pos.y }}
+          aria-hidden="false"
+          aria-label="Draggable testing panel"
+        >
+          <button
+            type="button"
+            id="close-test-card"
+            className="comment-mode-close floating-test-card__panel-close"
+            aria-label="Close testing panel"
+            onClick={(e) => {
+              e.stopPropagation();
+              closePanel();
+            }}
+          >
+            <img src={closeSmallIcon} alt="" aria-hidden />
+          </button>
+          <div
+            className="floating-test-card__handle"
+            onPointerDown={onHandlePointerDown}
+            role="presentation"
+          >
+            <span className="floating-test-card__grip" aria-hidden>
+              <img src={dragPanIcon} alt="" width={18} height={18} />
+            </span>
+            <h2 className="floating-test-card__title">Review Mode</h2>
+          </div>
+          <div className="floating-test-card__content">
+            <div className="floating-test-card__actions">
+              <button
+                type="button"
+                className="floating-test-card__action floating-test-card__comment-btn"
+              >
+                <span className="floating-test-card__comment-icon" aria-hidden />
+                Add a comment
+              </button>
+              <Link
+                to="/comments-overview"
+                className="floating-test-card__action floating-test-card__overview-link"
+              >
+                View all comments
+              </Link>
+            </div>
+            <details className="floating-test-card__dropdown" onToggle={onDetailsToggle}>
+              <summary className="floating-test-card__summary">
+                <span>{currentPrototypeVersionLabel()}</span>
+                <span className="floating-test-card__caret" aria-hidden />
+              </summary>
+              <ul className="floating-test-card__links">
+                <li>
+                  <a
+                    href="sbci-hub-v1.html"
+                    className="version-switch-link"
+                    onClick={(e) => handleVersionNav(e, "sbci-hub-v1.html")}
+                  >
+                    Prototype — Version 1
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/"
+                    className="version-switch-link"
+                    onClick={(e) => handleVersionNav(e, "/")}
+                  >
+                    Prototype — Version 2
+                  </a>
+                </li>
+              </ul>
+            </details>
+          </div>
+        </aside>
+      ) : (
         <button
           type="button"
-          id="close-test-card"
-          className={`comment-mode-close floating-test-card__panel-close ${styles.panelClose}`}
-          aria-label="Close testing panel"
-          onClick={(e) => {
-            e.stopPropagation();
-            setPanelOpen(false);
-          }}
+          id="toggle-test-card"
+          className="btn-toggle-test-card btn-review-mode-launcher"
+          aria-expanded="false"
+          aria-controls="floating-test-card"
+          onClick={openPanel}
         >
-          <img src={closeSmallIcon} alt="" aria-hidden />
+          Review Mode
         </button>
-        <div
-          className={`${styles.handle} floating-test-card__handle`}
-          onPointerDown={onHandlePointerDown}
-          role="presentation"
-        >
-          <span className={styles.grip} aria-hidden>
-            <img src={dragPanIcon} alt="" width={18} height={18} />
-          </span>
-          <h2 className={styles.heading}>Review Mode</h2>
-        </div>
-      <div className={styles.content}>
-        <button
-          type="button"
-          className={`${styles.commentBtn} floating-test-card__comment-btn`}
-        >
-          <span className="floating-test-card__comment-icon" aria-hidden />
-          Add a comment
-        </button>
-        <details className={styles.dropdown} onToggle={onDetailsToggle}>
-          <summary className={styles.summary}>
-            <span>{currentPrototypeVersionLabel()}</span>
-            <span className={styles.caret} aria-hidden />
-          </summary>
-          <ul className={styles.links}>
-            <li>
-              <a
-                href="index.html"
-                className={styles.versionLink}
-                onClick={(e) => handleVersionNav(e, "index.html")}
-              >
-                Prototype — Version 1
-              </a>
-            </li>
-            <li>
-              <a
-                href="prototype-v2.html"
-                className={styles.versionLink}
-                onClick={(e) => handleVersionNav(e, "prototype-v2.html")}
-              >
-                Prototype Version 2
-              </a>
-            </li>
-          </ul>
-        </details>
-      </div>
-    </aside>
+      )}
     </>
   );
 }

@@ -146,12 +146,20 @@
 
 /* SBCI static prototype: dark panel + default bottom-right anchor before drag JS runs */
 #app-root #floating-test-card.floating-test-card {
+  position: fixed;
   right: 24px;
   bottom: 24px;
   left: auto;
   top: auto;
+  display: block;
+  align-self: start;
+  justify-self: start;
   margin: 0;
   padding: 0 16px 16px;
+  min-height: 155px;
+  height: auto;
+  max-height: none;
+  overflow: visible;
   background: var(--test-mode-surface-panel);
   color: var(--test-mode-text-on-panel);
   border: 1px solid var(--test-mode-border-panel);
@@ -164,6 +172,11 @@
   top: 10px;
   right: 10px;
   z-index: 2;
+}
+
+#app-root #floating-test-card .floating-test-card__panel-close img {
+  filter: none;
+  opacity: 1;
 }
 
 #app-root #floating-test-card .floating-test-card__handle {
@@ -197,6 +210,8 @@
   display: block;
   width: 18px;
   height: 18px;
+  filter: none;
+  opacity: 1;
 }
 
 #app-root #floating-test-card .floating-test-card__title {
@@ -219,7 +234,14 @@
   gap: 12px;
 }
 
-#app-root #floating-test-card .floating-test-card__comment-btn {
+#app-root #floating-test-card .floating-test-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+#app-root #floating-test-card .floating-test-card__action {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -233,16 +255,21 @@
   border-radius: var(--test-mode-radius-control);
   cursor: pointer;
   align-self: flex-start;
+  text-decoration: none;
 }
 
-#app-root #floating-test-card .floating-test-card__comment-btn:hover {
+#app-root #floating-test-card .floating-test-card__action:hover {
   background: var(--test-mode-surface-hover);
   border-color: var(--test-mode-border-control-hover);
 }
 
-#app-root #floating-test-card .floating-test-card__comment-btn:focus-visible {
+#app-root #floating-test-card .floating-test-card__action:focus-visible {
   outline: 2px solid var(--test-mode-accent-soft);
   outline-offset: 2px;
+}
+
+#app-root #floating-test-card .floating-test-card__overview-link {
+  color: var(--test-mode-accent-soft);
 }
 
 #app-root #floating-test-card .floating-test-card__dropdown {

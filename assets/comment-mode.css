@@ -33,7 +33,12 @@ html.comment-mode-active #comment-mode-hint {
   cursor: auto;
 }
 
+html.comment-mode-active .floating-test-card__action,
 html.comment-mode-active .floating-test-card__comment-btn {
+  cursor: pointer;
+}
+
+html.comment-mode-active .floating-test-card__overview-link {
   cursor: pointer;
 }
 
@@ -166,6 +171,36 @@ html.comment-mode-active .comment-mode-submit {
 .comment-mode-close:focus-visible {
   outline: 2px solid var(--test-mode-focus-ring);
   outline-offset: 1px;
+}
+
+.comment-mode-pin-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.comment-mode-name-input,
+.comment-mode-position-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.92);
+  background: var(--test-mode-surface-input);
+  border: none;
+  outline: none;
+  border-radius: var(--test-mode-radius-control);
+}
+
+.comment-mode-name-input::placeholder,
+.comment-mode-position-input::placeholder {
+  color: rgba(255, 255, 255, 0.62);
 }
 
 .comment-mode-pin-card textarea,

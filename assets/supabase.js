@@ -116,3 +116,28 @@ export async function fetchCommentsForPage(pageUrl, sessionId) {
   }
   return response.json();
 }
+
+/**
+ * Comments Overview — all accessible rows, newest first.
+ * Optional PostgREST filters: `pageUrl` / `sessionId` (each encoded as the value of `eq.<raw>`).
+ */
+export async function fetchCommentsOverview({ pageUrl, sessionId } = {}) {
+  const url = new URL(`${SUPABASE_URL}/rest/v1/comments`);
+  url.searchParams.set("select", "*");
+  url.searchParams.set("order", "created_at.desc");
+  if (pageUrl != null && pageUrl !== "") {
+    url.searchParams.set("page_url", `eq.${pageUrl}`);
+  }
+  if (sessionId != null && sessionId !== "") {
+    url.searchParams.set("session_id", `eq.${sessionId}`);
+  }
+
+  const response = await fetch(url.toString(), {
+    method: "GET",
+    headers: readHeaders,
+  });
+  if (!response.ok) {
+    await throwWithLoggedBody("SELECT comments (overview)", response);
+  }
+  return response.json();
+}

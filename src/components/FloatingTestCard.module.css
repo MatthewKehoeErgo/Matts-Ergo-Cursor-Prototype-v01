@@ -92,6 +92,34 @@
   outline-offset: 2px;
 }
 
+.overviewBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg);
+  border: 2px solid #e0e0e0;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  align-self: flex-start;
+  text-decoration: none;
+}
+
+.overviewBtn:hover {
+  background: #f8f9fa;
+  border-color: #e0e0e0;
+}
+
+.overviewBtn:focus-visible {
+  outline: 2px solid var(--accent-fill);
+  outline-offset: 2px;
+}
+
 .dropdown {
   margin: 0;
   border: 1px solid var(--border);

@@ -195,9 +195,9 @@ export function FloatingTestCard() {
                 </li>
                 <li>
                   <a
-                    href="/"
+                href={import.meta.env.BASE_URL}
                     className="version-switch-link"
-                    onClick={(e) => handleVersionNav(e, "/")}
+                onClick={(e) => handleVersionNav(e, import.meta.env.BASE_URL)}
                   >
                     Prototype — Version 2
                   </a>

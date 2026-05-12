@@ -4,9 +4,10 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const REPO_BASE = "/Matts-Ergo-Cursor-Prototype-v01/";
 
-export default defineConfig({
-  base: "/Matts-Ergo-Cursor-Prototype-v01/",
+export default defineConfig(({ command }) => ({
+  base: command === "serve" ? "/" : REPO_BASE,
   plugins: [react()],
   server: {
     open: true,
@@ -21,4 +22,4 @@ export default defineConfig({
       },
     },
   },
-});
+}));

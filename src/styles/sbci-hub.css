@@ -263,6 +263,24 @@
         flex-shrink: 0;
       }
 
+      .prototype-version-banner {
+        position: fixed;
+        bottom: 16px;
+        left: 16px;
+        z-index: 9999;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        color: var(--review-mode-text-on-panel, #f1f3f5);
+        background: var(--review-mode-banner-bg, rgba(20, 22, 26, 0.78));
+        border: 1px solid var(--review-mode-banner-border, rgba(95, 214, 204, 0.28));
+        border-radius: 6px;
+        box-shadow: 0 2px 14px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(8px);
+        pointer-events: none;
+      }
+
       /* —— Version switch loading overlay —— */
       .page-transition {
         position: fixed;

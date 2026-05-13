@@ -1,6 +1,6 @@
 /**
- * App shell. Test Mode design tokens + Testing Panel styles load via
- * `assets/comment-mode.css` → `assets/test-mode.css` (see `react-app.html`).
+ * App shell base styles. Review Mode styles load from the reusable
+ * `src/features/review-mode/` module in `src/main.jsx`.
  */
 
 @font-face {

@@ -1,0 +1,55 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0");
+
+:root {
+  --review-mode-accent: #22c196;
+  --review-mode-font-sans:
+    "Inter",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+
+  --review-mode-surface-panel: #1c1f24;
+  --review-mode-surface-raised: #232730;
+  --review-mode-surface-hover: #2c313b;
+  --review-mode-surface-dialog: #1f232a;
+  --review-mode-surface-input: #2b2f36;
+  --review-mode-pin-surface: #1f232a;
+
+  --review-mode-border-panel: #2f343c;
+  --review-mode-border-control: #3a414b;
+  --review-mode-border-control-hover: #4a5260;
+  --review-mode-border-subtle: rgba(255, 255, 255, 0.14);
+  --review-mode-banner-border: rgba(95, 214, 204, 0.28);
+
+  --review-mode-text-on-panel: #f1f3f5;
+  --review-mode-text-muted: #9aa0a6;
+  --review-mode-accent-soft: #5fd6cc;
+  --review-mode-handle-dash: rgba(255, 255, 255, 0.12);
+
+  --review-mode-shadow-panel:
+    0 4px 24px rgba(0, 0, 0, 0.5),
+    0 2px 8px rgba(0, 0, 0, 0.35);
+
+  --review-mode-radius-panel: 8px;
+  --review-mode-radius-control: 6px;
+  --review-mode-z-panel: 10000;
+
+  --review-mode-submit-fill: #35c0b3;
+  --review-mode-focus-ring: #35c0b3;
+  --review-mode-comment-active-ring: rgba(53, 192, 179, 0.35);
+  --review-mode-placement-tint: rgba(14, 67, 73, 0.07);
+  --review-mode-banner-bg: rgba(20, 22, 26, 0.78);
+
+  --review-mode-launcher-bg: var(--review-mode-surface-raised);
+  --review-mode-launcher-text: var(--review-mode-text-on-panel);
+  --review-mode-launcher-border: var(--review-mode-border-control);
+  --review-mode-launcher-hover-bg: var(--review-mode-surface-hover);
+  --review-mode-launcher-hover-border: var(--review-mode-border-control-hover);
+  --review-mode-launcher-focus-ring: var(--review-mode-accent);
+  --review-mode-launcher-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+}

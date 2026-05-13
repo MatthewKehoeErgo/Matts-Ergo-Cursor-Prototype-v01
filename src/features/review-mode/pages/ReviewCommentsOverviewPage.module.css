@@ -1,0 +1,378 @@
+/* Review Mode destination surface — intentionally outside the SBCI app shell. */
+
+.page {
+  min-height: 100vh;
+  padding: 24px;
+  font-family: var(--review-mode-font-sans);
+  color: var(--review-mode-text-on-panel);
+  background:
+    radial-gradient(circle at top right, rgba(53, 192, 179, 0.12), transparent 30%),
+    linear-gradient(180deg, #14181f 0%, #101319 100%);
+}
+
+.topBar {
+  max-width: 1440px;
+  margin: 0 auto 20px;
+  padding: 20px 24px;
+  background: var(--review-mode-surface-panel);
+  border: 1px solid var(--review-mode-border-panel);
+  border-radius: var(--review-mode-radius-panel);
+  box-shadow: var(--review-mode-shadow-panel);
+}
+
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--review-mode-text-on-panel);
+  background: transparent;
+  border: 2px solid var(--review-mode-border-control);
+  padding: 6px 12px;
+  border-radius: var(--review-mode-radius-control);
+  cursor: pointer;
+}
+
+.backBtn:hover {
+  background: var(--review-mode-surface-hover);
+  border-color: var(--review-mode-border-control-hover);
+}
+
+.backBtn:focus-visible {
+  outline: 2px solid var(--review-mode-accent-soft);
+  outline-offset: 2px;
+}
+
+.titleBlock {
+  margin-top: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--review-mode-text-on-panel);
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--review-mode-text-muted);
+  max-width: 48rem;
+  line-height: 1.5;
+}
+
+.grid {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  background: var(--review-mode-surface-panel);
+  border: 1px solid var(--review-mode-border-panel);
+  border-radius: var(--review-mode-radius-panel);
+  box-shadow: var(--review-mode-shadow-panel);
+  overflow: hidden;
+}
+
+.panelHead {
+  padding: 14px 16px;
+  border-bottom: 1px dashed var(--review-mode-handle-dash);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--review-mode-text-on-panel);
+  background: var(--review-mode-surface-raised);
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--review-mode-border-panel);
+  background: var(--review-mode-surface-panel);
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.filterLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--review-mode-text-muted);
+}
+
+.select {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border: 1px solid var(--review-mode-border-control);
+  border-radius: var(--review-mode-radius-control);
+  background: var(--review-mode-surface-raised);
+  color: var(--review-mode-text-on-panel);
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--review-mode-accent-soft);
+  outline-offset: 2px;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th {
+  text-align: left;
+  padding: 12px 16px;
+  font-weight: 600;
+  color: var(--review-mode-text-muted);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--review-mode-border-panel);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: top;
+}
+
+.row {
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.row:hover {
+  background: rgba(95, 214, 204, 0.06);
+}
+
+.rowSelected {
+  background: rgba(95, 214, 204, 0.12);
+}
+
+.cellText {
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.45;
+  max-width: 32rem;
+  color: var(--review-mode-text-on-panel);
+}
+
+.screenCell {
+  color: var(--review-mode-text-on-panel);
+  font-weight: 500;
+}
+
+.dateCell {
+  color: var(--review-mode-text-muted);
+  white-space: nowrap;
+}
+
+.actionCell {
+  white-space: nowrap;
+}
+
+.linkish {
+  font-weight: 600;
+  color: var(--review-mode-accent-soft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.emptyPanel {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--review-mode-text-muted);
+  font-size: 14px;
+}
+
+.errorPanel {
+  padding: 20px;
+  color: var(--review-mode-text-on-panel);
+  font-size: 14px;
+  border-left: 3px solid #ff6b6b;
+  background: rgba(198, 40, 40, 0.12);
+}
+
+.detailPanel {
+  position: sticky;
+  top: 24px;
+}
+
+.detailBody {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detailPlacehold {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--review-mode-text-muted);
+  font-size: 13px;
+}
+
+.commentBody {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--review-mode-text-on-panel);
+  white-space: pre-wrap;
+}
+
+.metaList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metaRow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metaLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--review-mode-text-muted);
+}
+
+.metaValue {
+  color: var(--review-mode-text-on-panel);
+}
+
+.metaMuted {
+  font-size: 12px;
+  color: var(--review-mode-text-muted);
+  word-break: break-all;
+}
+
+.previewBox {
+  border: 1px solid var(--review-mode-border-panel);
+  border-radius: var(--review-mode-radius-control);
+  overflow: hidden;
+  background: var(--review-mode-surface-raised);
+}
+
+.previewLabel {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--review-mode-text-muted);
+  border-bottom: 1px solid var(--review-mode-border-panel);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.previewStage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: linear-gradient(145deg, #313745 0%, #272c37 48%, #212630 100%);
+}
+
+.previewPlaceholderGrid {
+  position: absolute;
+  inset: 12%;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.marker {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin-left: -7px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: var(--review-mode-submit-fill);
+  border: 2px solid #fff;
+  box-shadow:
+    0 0 0 3px rgba(95, 214, 204, 0.18),
+    0 2px 10px rgba(0, 0, 0, 0.35);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.marker::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 2px solid rgba(95, 214, 204, 0.25);
+  animation: pulseRing 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.8;
+  }
+
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.loading {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px;
+  text-align: center;
+  color: var(--review-mode-text-muted);
+  font-size: 14px;
+}

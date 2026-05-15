@@ -12,8 +12,7 @@ import { AppReviewModeRoot } from "./review-mode/AppReviewModeRoot.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-<HashRouter>
-``
+    <HashRouter>
       <AppReviewModeRoot>
         <App />
       </AppReviewModeRoot>

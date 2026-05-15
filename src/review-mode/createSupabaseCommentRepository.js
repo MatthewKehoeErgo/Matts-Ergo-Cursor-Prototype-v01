@@ -72,6 +72,7 @@ export function createSupabaseCommentRepository() {
     async listForPage({ pageUrl, sessionId, version }) {
       const rows = await fetchCommentsForPage(pageUrl, sessionId, version, {
         onlyUnresolved: true,
+        filterBySession: false,
       });
       return Array.isArray(rows) ? rows.map(normalizeComment) : [];
     },

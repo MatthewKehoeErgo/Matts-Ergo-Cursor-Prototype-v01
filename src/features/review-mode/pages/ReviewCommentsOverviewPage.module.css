@@ -1,5 +1,14 @@
 /* Review Mode destination surface — intentionally outside the SBCI app shell. */
 
+/* Match page gradient base — global SBCI styles set body/html to white. */
+:global(html.comments-overview-route),
+:global(html.comments-overview-route body),
+:global(html.comments-overview-route #root) {
+  background-color: #101319;
+  min-height: 100%;
+  color-scheme: dark;
+}
+
 .page {
   min-height: 100vh;
   padding: 24px;

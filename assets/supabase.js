@@ -102,23 +102,27 @@ export async function supabaseDelete(table, rowId) {
  * IMPORTANT: Each PostgREST filter is its own query parameter. We use
  * URLSearchParams so only the *values* are URL-encoded — never the whole
  * query string. The shape is:
- *   ?select=*&page_url=eq.<encoded url>&session_id=eq.<uuid>&version=eq.<id>&order=created_at.asc
+ *   ?select=*&page_url=eq.<encoded url>[&session_id=eq.<uuid>]&version=eq.<id>&order=created_at.asc
  *
  * @param {string} pageUrl
- * @param {string} sessionId
+ * @param {string} sessionId — used when `filterBySession` is true (insert attribution still uses per-browser id).
  * @param {string} [version] — when set, only rows for that prototype version (e.g. `prototype-v2`).
- * @param {{ onlyUnresolved?: boolean }} [options] — when `onlyUnresolved` is true (default), only rows with `status=unresolved` (prototype pins).
+ * @param {{ onlyUnresolved?: boolean, filterBySession?: boolean }} [options]
+ *   — `onlyUnresolved` (default true): only rows with `status=unresolved` (prototype pins).
+ *   — `filterBySession` (default false): when true, restrict to `sessionId`; when false, shared team load for the page.
  */
 export async function fetchCommentsForPage(
   pageUrl,
   sessionId,
   version,
-  { onlyUnresolved = true } = {},
+  { onlyUnresolved = true, filterBySession = false } = {},
 ) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/comments`);
   url.searchParams.set("select", "*");
   url.searchParams.set("page_url", `eq.${pageUrl}`);
-  url.searchParams.set("session_id", `eq.${sessionId}`);
+  if (filterBySession && sessionId != null && sessionId !== "") {
+    url.searchParams.set("session_id", `eq.${sessionId}`);
+  }
   if (version != null && version !== "") {
     url.searchParams.set("version", `eq.${version}`);
   }

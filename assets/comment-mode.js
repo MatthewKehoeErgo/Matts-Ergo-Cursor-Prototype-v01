@@ -11,7 +11,7 @@
  *   client coordinates. Markers use `position: fixed` and are repositioned on scroll/resize.
  *
  * Supabase:
- * - `session_id` — UUID string in localStorage (`SESSION_STORAGE_KEY`), reused for all rows.
+ * - `session_id` — UUID per browser in localStorage (stored on insert; pins load for all sessions on the page).
  * - Inserts use `text`, `page_url`, `x_position`, `y_position`, `x_ratio`, `y_ratio`,
  *   `viewport_width`, `viewport_height`, `session_id`, `version`.
  * - Updates set `text` and `updated_at` (ISO string) for the row `id`.
@@ -26,13 +26,16 @@ import {
 } from "./supabase.js";
 import { getPrototypeVersionIdFromWindow } from "./prototype-version.js";
 import { toJpeg } from "html-to-image";
+import placedCommentIcon from "./Comment - Placed - Icon.svg?url";
+import submitIcon from "./Submit Icon.svg?url";
+import closeSmallIcon from "./close_small.svg?url";
 
 const COMMENTS_TABLE = "comments";
 const SESSION_STORAGE_KEY = "prototype-comments-session-id";
 const PREVIEW_PATCH_MAX_URL_LENGTH = 2400000;
-const ICON_SRC = "assets/Comment - Placed - Icon.svg";
-const SUBMIT_ICON_SRC = "assets/Submit Icon.svg";
-const CLOSE_ICON_SRC = "assets/close_small.svg";
+const ICON_SRC = placedCommentIcon;
+const SUBMIT_ICON_SRC = submitIcon;
+const CLOSE_ICON_SRC = closeSmallIcon;
 
 /**
  * Outer diameter of `.comment-mode-editor-pin` (must match `comment-mode.css`;
@@ -460,7 +463,7 @@ async function persistComment(record, isUpdate) {
 }
 
 /**
- * Load saved pins for this `page_url` + `session_id` and draw markers (after refresh).
+ * Load saved pins for this `page_url` + `version` (all sessions) and draw markers (after refresh).
  */
 async function loadCommentsFromSupabase() {
   var pageUrl = getPageUrlForQuery();
@@ -468,7 +471,9 @@ async function loadCommentsFromSupabase() {
   var version = getPrototypeVersionIdFromWindow();
   var rows;
   try {
-    rows = await fetchCommentsForPage(pageUrl, sessionId, version);
+    rows = await fetchCommentsForPage(pageUrl, sessionId, version, {
+      filterBySession: false,
+    });
   } catch (err) {
     console.error("Failed to load comments:", err);
     return;

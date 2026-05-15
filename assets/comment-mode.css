@@ -5,6 +5,12 @@
  * Tokens & Testing Panel live in `test-mode.css` (Test Mode design system).
  */
 
+/* Mask icon — bundled URL (overrides test-mode.css string path for production) */
+#floating-test-card .floating-test-card__comment-icon {
+  mask-image: url("./add_comment_icon_button.svg");
+  -webkit-mask-image: url("./add_comment_icon_button.svg");
+}
+
 /* Subtle full-screen tint — pointer-events none so clicks reach the page for placement */
 body.comment-mode-active::before {
   content: "";

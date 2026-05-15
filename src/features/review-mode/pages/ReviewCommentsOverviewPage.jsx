@@ -168,6 +168,13 @@ export function ReviewCommentsOverviewPage() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    document.documentElement.classList.add("comments-overview-route");
+    return () => {
+      document.documentElement.classList.remove("comments-overview-route");
+    };
+  }, []);
+
   const pageOptions = useMemo(() => {
     const values = new Set();
     rows.forEach((row) => {

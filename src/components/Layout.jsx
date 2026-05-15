@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { FloatingTestCard } from "./FloatingTestCard.jsx";
+import setuLogoUrl from "../../assets/SETU/setu-logo.svg?url";
 
 const MQ = "(max-width: 1200px)";
 
@@ -98,7 +99,7 @@ export function Layout() {
     <>
       <div
         id="app-root"
-        className={["app", navOpen ? "nav-open" : ""].filter(Boolean).join(" ")}
+        className={["app", "theme-setu", navOpen ? "nav-open" : ""].filter(Boolean).join(" ")}
       >
         <aside id="primary-nav" className="sidebar" aria-label="Primary">
           <div className="sidebar__mobile-header">
@@ -115,6 +116,15 @@ export function Layout() {
                 close
               </span>
             </button>
+          </div>
+          <div className="sidebar__brand">
+            <img
+              className="sidebar__brand-logo"
+              src={setuLogoUrl}
+              alt="SETU"
+              width={120}
+              height={46}
+            />
           </div>
           {NAV_ITEMS.map((item) => {
             if (item.kind === "stub") {
@@ -175,29 +185,48 @@ export function Layout() {
 
         <div className="main-column">
           <header className="top-header">
-            <button
-              type="button"
-              className="nav-burger"
-              id="nav-burger"
-              aria-label="Open menu"
-              aria-expanded={navOpen}
-              aria-controls="primary-nav"
-              onClick={() => {
-                if (!mqRef.current?.matches) return;
-                toggleNav();
-              }}
-            >
-              <span className="material-symbols-outlined" aria-hidden="true">
-                menu
-              </span>
-            </button>
+            <div className="top-header-left">
+              <button
+                type="button"
+                className="nav-burger"
+                id="nav-burger"
+                aria-label="Open menu"
+                aria-expanded={navOpen}
+                aria-controls="primary-nav"
+                onClick={() => {
+                  if (!mqRef.current?.matches) return;
+                  toggleNav();
+                }}
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  menu
+                </span>
+              </button>
+              <nav
+                className="top-header-nav"
+                aria-label="Courses and resources"
+              >
+                <a href="#" className="top-header-nav__link">
+                  Courses
+                </a>
+                <a href="#" className="top-header-nav__link">
+                  Events
+                </a>
+                <a href="#" className="top-header-nav__link">
+                  Shop
+                </a>
+                <a href="#" className="top-header-nav__link">
+                  Resources
+                </a>
+              </nav>
+            </div>
             <div className="logo-wrap">
               <span className="logo">
                 <img
-                  src="/assets/sbci_logo_Without_Text.jpg"
-                  alt="SBCI"
-                  width="55"
-                  height="35"
+                  src={setuLogoUrl}
+                  alt="SETU"
+                  width="120"
+                  height="46"
                 />
               </span>
             </div>

@@ -1,22 +1,19 @@
 import { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import {
+  buildPrototypeVersionOptions,
+  getPrototypeVersionIdFromWindow,
+  PROTOTYPE_VERSION_V1,
+} from "../constants/prototypeVersion.js";
 import { ReviewModeProvider } from "../features/review-mode/index.js";
 import { createSupabaseCommentRepository } from "./createSupabaseCommentRepository.js";
 
 const SESSION_STORAGE_KEY = "prototype-comments-session-id";
 
-const VERSION_OPTIONS = [
-  {
-    id: "prototype-v1",
-    label: "Prototype — Version 1",
-    href: "sbci-hub-v1.html",
-  },
-  {
-    id: "prototype-v2",
-    label: "Prototype — Version 2",
-    href: import.meta.env.BASE_URL,
-  },
-];
+/** Full navigation target for the React prototype (HashRouter). Keeps static HTML and SPA in sync. */
+const REACT_ENTRY_HREF = `${import.meta.env.BASE_URL}index.html#/dashboard`;
+
+const VERSION_OPTIONS = buildPrototypeVersionOptions(REACT_ENTRY_HREF);
 
 function getOrCreateSessionId() {
   const existing = localStorage.getItem(SESSION_STORAGE_KEY);
@@ -35,9 +32,7 @@ function getOrCreateSessionId() {
 }
 
 function currentVersionId() {
-  if (typeof window === "undefined") return "prototype-v2";
-  const file = window.location.pathname.split("/").pop()?.toLowerCase() ?? "";
-  return file === "sbci-hub-v1.html" ? "prototype-v1" : "prototype-v2";
+  return getPrototypeVersionIdFromWindow();
 }
 
 export function AppReviewModeRoot({ children }) {
@@ -54,8 +49,24 @@ export function AppReviewModeRoot({ children }) {
         typeof window === "undefined" ? "" : getOrCreateSessionId(),
       versionOptions: VERSION_OPTIONS,
       currentVersionId: currentVersionId(),
-      openOverview: () => navigate("/comments-overview"),
-      openDefaultScreen: () => navigate("/dashboard"),
+      openOverview: () => {
+        const v = getPrototypeVersionIdFromWindow();
+        navigate({
+          pathname: "/comments-overview",
+          search: new URLSearchParams({ version: v }).toString(),
+        });
+      },
+      openDefaultScreen: (versionId) => {
+        if (versionId === PROTOTYPE_VERSION_V1) {
+          sessionStorage.setItem("sbci-version-transition", "1");
+          const href =
+            VERSION_OPTIONS.find((o) => o.id === PROTOTYPE_VERSION_V1)?.href ??
+            "sbci-hub-v1.html";
+          window.location.href = href;
+          return;
+        }
+        navigate("/dashboard");
+      },
       openVersion: (option) => {
         if (!option?.href) return;
         sessionStorage.setItem("sbci-version-transition", "1");
@@ -64,9 +75,10 @@ export function AppReviewModeRoot({ children }) {
       shouldIgnorePlacementTarget: (el) =>
         Boolean(el?.closest(".prototype-version-banner")),
       confirmDelete: (message) => window.confirm(message),
+      confirmResolve: (message) => window.confirm(message),
       alert: (message) => window.alert(message),
     }),
-    [location.pathname, navigate],
+    [location.pathname, location.hash, navigate],
   );
 
   return (

@@ -1168,6 +1168,9 @@
         type="button"
         class="btn-toggle-test-card btn-review-mode-launcher"
         id="toggle-test-card"
+        aria-expanded="false"
+        aria-controls="floating-test-card"
+        data-review-mode-ui="true"
       >
         Review Mode
       </button>
@@ -1175,36 +1178,56 @@
       <aside
         id="floating-test-card"
         class="floating-test-card is-hidden"
-        aria-label="Draggable testing panel"
+        aria-label="Draggable review mode panel"
         aria-hidden="true"
+        data-review-mode-ui="true"
       >
         <button
           type="button"
           class="comment-mode-close floating-test-card__panel-close"
           id="close-test-card"
-          aria-label="Close testing panel"
+          aria-label="Close review mode panel"
+          data-review-mode-ui="true"
         >
           <img src="assets/close_small.svg" alt="" aria-hidden="true" />
         </button>
-        <div class="floating-test-card__handle" role="presentation">
+        <div class="floating-test-card__handle" role="presentation" data-review-mode-ui="true">
           <span class="floating-test-card__grip" aria-hidden="true">
             <img src="assets/drag_pan.svg" alt="" width="18" height="18" />
           </span>
           <h2 class="floating-test-card__title">Review Mode</h2>
         </div>
         <div class="floating-test-card__content">
-          <button type="button" class="floating-test-card__comment-btn">
-            <span class="floating-test-card__comment-icon" aria-hidden="true"></span>
-            Add a comment
-          </button>
-          <details class="floating-test-card__dropdown">
-            <summary class="floating-test-card__summary">
+          <div class="floating-test-card__actions">
+            <button
+              type="button"
+              class="floating-test-card__action floating-test-card__comment-btn"
+              data-review-mode-ui="true"
+            >
+              <span class="floating-test-card__comment-icon" aria-hidden="true"></span>
+              Add a comment
+            </button>
+            <button
+              type="button"
+              class="floating-test-card__action floating-test-card__overview-link"
+              data-review-mode-ui="true"
+              data-comments-version="prototype-v1"
+            >
+              <span
+                class="material-symbols-outlined floating-test-card__overview-icon"
+                aria-hidden="true"
+                >table_chart</span>
+              View all comments
+            </button>
+          </div>
+          <details class="floating-test-card__dropdown" data-review-mode-ui="true">
+            <summary class="floating-test-card__summary" data-review-mode-ui="true">
               <span>Prototype — Version 1</span>
               <span class="floating-test-card__caret" aria-hidden="true"></span>
             </summary>
             <ul class="floating-test-card__links">
               <li><a href="sbci-hub-v1.html" class="version-switch-link">Prototype — Version 1</a></li>
-              <li><a href="prototype-v2.html" class="version-switch-link">Prototype Version 2</a></li>
+              <li><a href="index.html#/dashboard" class="version-switch-link">Prototype — Version 2</a></li>
             </ul>
           </details>
         </div>
@@ -1289,7 +1312,7 @@
         }
 
         function versionLabelForTargetFile(file) {
-          if (file === "prototype-v2.html") return "Version 2";
+          if (file === "prototype-v2.html" || file === "index.html") return "Version 2";
           return "Version 1";
         }
 
@@ -1341,14 +1364,21 @@
         document.body.addEventListener("click", function (e) {
           var a = e.target.closest("a.version-switch-link");
           if (!a || !a.getAttribute("href")) return;
-          var href = a.getAttribute("href");
-          var targetFile = href.split("/").pop().split("?")[0].toLowerCase();
+          var hrefAttr = a.getAttribute("href") || "";
+          var pathPart = hrefAttr.split("#")[0];
+          var targetFile = pathPart.split("/").pop().split("?")[0].toLowerCase();
           var here = currentPageFile();
           if (targetFile === here) {
             e.preventDefault();
             return;
           }
-          if (targetFile !== "sbci-hub-v1.html" && targetFile !== "prototype-v2.html") return;
+          if (
+            targetFile !== "sbci-hub-v1.html" &&
+            targetFile !== "prototype-v2.html" &&
+            targetFile !== "index.html"
+          ) {
+            return;
+          }
           e.preventDefault();
           sessionStorage.setItem("sbci-version-transition", "1");
           setLoadingMessageForFile(targetFile);
@@ -1366,6 +1396,7 @@
       (function () {
         var card = document.getElementById("floating-test-card");
         var toggleBtn = document.getElementById("toggle-test-card");
+        var appRoot = document.getElementById("app-root");
         var panelClose = document.getElementById("close-test-card");
         var handle = card ? card.querySelector(".floating-test-card__handle") : null;
         var detailsDropdown = card ? card.querySelector(".floating-test-card__dropdown") : null;
@@ -1413,18 +1444,21 @@
         function openPanel() {
           card.classList.remove("is-hidden");
           card.setAttribute("aria-hidden", "false");
-          toggleBtn.classList.add("is-hidden");
+          toggleBtn.setAttribute("aria-expanded", "true");
+          if (appRoot) appRoot.classList.add("floating-test-card-open");
           requestAnimationFrame(placeBottomRight);
         }
 
         function closePanel() {
           card.classList.add("is-hidden");
           card.setAttribute("aria-hidden", "true");
-          toggleBtn.classList.remove("is-hidden");
+          toggleBtn.setAttribute("aria-expanded", "false");
+          if (appRoot) appRoot.classList.remove("floating-test-card-open");
         }
 
         toggleBtn.addEventListener("click", function () {
-          openPanel();
+          if (card.classList.contains("is-hidden")) openPanel();
+          else closePanel();
         });
 
         if (panelClose) {
@@ -1434,7 +1468,20 @@
           });
         }
 
+        var overviewBtn = card.querySelector(".floating-test-card__overview-link");
+        if (overviewBtn && overviewBtn.tagName === "BUTTON") {
+          overviewBtn.addEventListener("click", function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var v = overviewBtn.getAttribute("data-comments-version") || "";
+            window.location.href =
+              "index.html#/comments-overview" +
+              (v ? "?version=" + encodeURIComponent(v) : "");
+          });
+        }
+
         handle.addEventListener("pointerdown", function (e) {
+          if (e.target.closest("#close-test-card")) return;
           if (e.button !== 0) return;
           var rect = card.getBoundingClientRect();
           offsetX = e.clientX - rect.left;

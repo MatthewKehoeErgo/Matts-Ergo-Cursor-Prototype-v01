@@ -181,6 +181,12 @@ export function ReviewModePanel({
             data-review-mode-ui="true"
             onClick={onOpenOverview}
           >
+            <span
+              className="material-symbols-outlined review-mode-panel__overview-icon"
+              aria-hidden="true"
+            >
+              table_chart
+            </span>
             View all comments
           </button>
         </div>

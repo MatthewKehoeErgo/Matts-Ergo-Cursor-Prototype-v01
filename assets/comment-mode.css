@@ -20,10 +20,9 @@ html.comment-mode-active body {
   cursor: crosshair;
 }
 
-/* Restore normal cursor over chrome that should not use crosshair */
-html.comment-mode-active #toggle-test-card,
-html.comment-mode-active #floating-test-card,
-html.comment-mode-active #floating-test-card *,
+/* Restore normal cursor over Review Mode chrome (matches React `data-review-mode-ui`) */
+html.comment-mode-active [data-review-mode-ui="true"],
+html.comment-mode-active [data-review-mode-ui="true"] *,
 html.comment-mode-active .comment-mode-editor-shell,
 html.comment-mode-active .comment-mode-editor-shell *,
 html.comment-mode-active .comment-mode-pin-card,
@@ -50,7 +49,12 @@ html.comment-mode-active .comment-mode-submit {
   cursor: pointer;
 }
 
-.floating-test-card__comment-btn.is-comment-mode-active {
+html.comment-mode-active .comment-mode-resolve {
+  cursor: pointer;
+}
+
+.floating-test-card__comment-btn.is-comment-mode-active,
+.floating-test-card__comment-btn.is-active {
   box-shadow:
     inset 0 0 0 1px var(--test-mode-comment-active-ring),
     0 2px 10px rgba(0, 0, 0, 0.25);
@@ -305,15 +309,37 @@ html.comment-mode-active .comment-mode-submit {
   outline-offset: 2px;
 }
 
-/*
- * Placed comment pins only when Review Mode is on (#floating-test-card visible).
- * Panel closed = `.is-hidden` on the card; launcher button does not drive marker visibility.
- */
-body:not(:has(#floating-test-card:not(.is-hidden)))
-  .comment-mode-layer
-  .comment-mode-marker {
-  visibility: hidden;
-  pointer-events: none;
+.comment-mode-resolve {
+  position: absolute;
+  left: 52px;
+  bottom: 12px;
+  min-width: 72px;
+  height: 36px;
+  padding: 0 10px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.82);
+  background: transparent;
+  border: 1px solid var(--test-mode-border-control);
+  border-radius: var(--test-mode-radius-control);
+  cursor: pointer;
+}
+
+.comment-mode-resolve:hover {
+  background: var(--test-mode-surface-hover);
+  border-color: var(--test-mode-border-control-hover);
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.comment-mode-resolve:focus-visible {
+  outline: 2px solid var(--test-mode-focus-ring);
+  outline-offset: 2px;
 }
 
 /* Collapsed marker — SVG carries circle + icon; button is chrome + shadow only */

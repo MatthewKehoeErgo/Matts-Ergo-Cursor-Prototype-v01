@@ -6,12 +6,14 @@
  * - Toggled by the existing "Add a comment" button (same button turns mode off).
  *
  * Coordinates:
- * - We store viewport coordinates (`clientX` / `clientY`) in `x_position` / `y_position` to match
- *   the schema; markers are positioned with `position: fixed` using those values.
+ * - New comments store document-space (page) coordinates in `x_position` / `y_position`
+ *   so pins track page scroll. Legacy rows (matching saved ratios) are treated as viewport
+ *   client coordinates. Markers use `position: fixed` and are repositioned on scroll/resize.
  *
  * Supabase:
  * - `session_id` — UUID string in localStorage (`SESSION_STORAGE_KEY`), reused for all rows.
- * - Inserts use `text`, `page_url`, `x_position`, `y_position`, `session_id`.
+ * - Inserts use `text`, `page_url`, `x_position`, `y_position`, `x_ratio`, `y_ratio`,
+ *   `viewport_width`, `viewport_height`, `session_id`, `version`.
  * - Updates set `text` and `updated_at` (ISO string) for the row `id`.
  * - `text` encodes optional name, position, and comment body (see serializeStoredComment).
  */
@@ -22,9 +24,12 @@ import {
   supabaseDelete,
   fetchCommentsForPage,
 } from "./supabase.js";
+import { getPrototypeVersionIdFromWindow } from "./prototype-version.js";
+import { toJpeg } from "html-to-image";
 
 const COMMENTS_TABLE = "comments";
 const SESSION_STORAGE_KEY = "prototype-comments-session-id";
+const PREVIEW_PATCH_MAX_URL_LENGTH = 2400000;
 const ICON_SRC = "assets/Comment - Placed - Icon.svg";
 const SUBMIT_ICON_SRC = "assets/Submit Icon.svg";
 const CLOSE_ICON_SRC = "assets/close_small.svg";
@@ -44,13 +49,14 @@ const EDITOR_CARD_GAP_PX = 16;
  *     id: number,
  *     x: number,
  *     y: number,
+ *     positionAnchor: "viewport"|"page",
  *     text: string,
  *     authorName: string,
  *     authorPosition: string,
  *   }>,
  *   layer: HTMLElement|null,
  *   hintEl: HTMLElement|null,
- *   openEditor: { shell: HTMLElement, existing: any } | null,
+ *   openEditor: { shell: HTMLElement, existing: any, anchorPageX: number, anchorPageY: number } | null,
  * }}
  *
  * `openEditor` enforces "only one editor at a time" — checked when a click happens
@@ -66,6 +72,151 @@ var state = {
 
 function getPageUrlForQuery() {
   return window.location.href.split("#")[0];
+}
+
+function excludeCommentChromeFromPreviewCapture(node) {
+  if (!(node instanceof Element)) return true;
+  if (node.closest(".comment-mode-layer")) return false;
+  if (node.closest("[data-review-mode-ui='true']")) return false;
+  if (node.closest("#floating-test-card")) return false;
+  if (node.closest("#toggle-test-card")) return false;
+  return true;
+}
+
+function inferPositionAnchorFromRow(row) {
+  var vw = Number(row.viewport_width);
+  var vh = Number(row.viewport_height);
+  var x = Number(row.x_position);
+  var y = Number(row.y_position);
+  var xr = Number(row.x_ratio);
+  var yr = Number(row.y_ratio);
+  if (
+    !(vw > 0) ||
+    !(vh > 0) ||
+    !Number.isFinite(x) ||
+    !Number.isFinite(y) ||
+    !Number.isFinite(xr) ||
+    !Number.isFinite(yr)
+  ) {
+    return "page";
+  }
+  var tol = 0.06;
+  var nearXr = Math.abs(x / vw - xr) < tol;
+  var nearYr = Math.abs(y / vh - yr) < tol;
+  return nearXr && nearYr ? "viewport" : "page";
+}
+
+function eventPageXY(ev) {
+  if (typeof ev.pageX === "number" && typeof ev.pageY === "number") {
+    return { x: ev.pageX, y: ev.pageY };
+  }
+  return {
+    x: ev.clientX + window.scrollX,
+    y: ev.clientY + window.scrollY,
+  };
+}
+
+/** Top-left of 48×48 marker in viewport px for `position: fixed` (record.x/y = pin center). */
+function markerFixedTopLeft(record) {
+  if (record.positionAnchor === "viewport") {
+    var pv = clampPanelPosition(record.x - 24, record.y - 24, 48, 48);
+    return { left: pv.left, top: pv.top };
+  }
+  var cx = record.x - window.scrollX - 24;
+  var cy = record.y - window.scrollY - 24;
+  var p = clampPanelPosition(cx, cy, 48, 48);
+  return { left: p.left, top: p.top };
+}
+
+function syncAllMarkerDomPositions() {
+  if (!state.layer) return;
+  state.layer.querySelectorAll(".comment-mode-marker[data-db-id]").forEach(function (btn) {
+    var id = parseInt(btn.dataset.dbId, 10);
+    var rec = state.comments.find(function (c) {
+      return c.id === id;
+    });
+    if (!rec) return;
+    var pos = markerFixedTopLeft(rec);
+    btn.style.left = pos.left + "px";
+    btn.style.top = pos.top + "px";
+  });
+}
+
+function layoutEditorCardFromViewportPoint(shell, viewX, viewY) {
+  var card = shell.querySelector(".comment-mode-pin-card");
+  if (!card) return;
+  var rect = card.getBoundingClientRect();
+  var pinHalf = EDITOR_PIN_SIZE_PX / 2;
+  var pinTop = viewY - pinHalf;
+  var clickLeftOfCenter = viewX < window.innerWidth / 2;
+  var preferredLeft = clickLeftOfCenter
+    ? viewX + pinHalf + EDITOR_CARD_GAP_PX
+    : viewX - pinHalf - EDITOR_CARD_GAP_PX - rect.width;
+  var pos = clampPanelPosition(preferredLeft, pinTop, rect.width, rect.height);
+  card.style.left = pos.left + "px";
+  card.style.top = pos.top + "px";
+}
+
+function repositionOpenEditorChrome() {
+  var entry = state.openEditor;
+  if (!entry || !entry.shell) return;
+  var pin = entry.shell.querySelector(".comment-mode-editor-pin");
+  if (pin) {
+    pin.style.left = entry.anchorPageX - window.scrollX + "px";
+    pin.style.top = entry.anchorPageY - window.scrollY + "px";
+  }
+  var viewX = entry.anchorPageX - window.scrollX;
+  var viewY = entry.anchorPageY - window.scrollY;
+  layoutEditorCardFromViewportPoint(entry.shell, viewX, viewY);
+}
+
+function onViewportScrollOrResize() {
+  syncAllMarkerDomPositions();
+  repositionOpenEditorChrome();
+}
+
+var viewportListenersAttached = false;
+
+function attachViewportScrollListenersOnce() {
+  if (viewportListenersAttached) return;
+  viewportListenersAttached = true;
+  window.addEventListener("scroll", onViewportScrollOrResize, { passive: true });
+  window.addEventListener("resize", onViewportScrollOrResize);
+}
+
+/**
+ * Match React Review Mode: capture main prototype chrome (not comment overlays) and PATCH preview_image_url.
+ */
+async function captureStaticPreviewAndPatch(commentId) {
+  await new Promise(function (resolve) {
+    requestAnimationFrame(function () {
+      requestAnimationFrame(resolve);
+    });
+  });
+  try {
+    var target =
+      document.getElementById("app-root") ||
+      document.getElementById("root") ||
+      document.body;
+    var dataUrl = await toJpeg(target, {
+      quality: 0.47,
+      pixelRatio: 0.3,
+      cacheBust: true,
+      filter: excludeCommentChromeFromPreviewCapture,
+    });
+    if (
+      typeof dataUrl !== "string" ||
+      dataUrl.length > PREVIEW_PATCH_MAX_URL_LENGTH
+    ) {
+      return;
+    }
+    await supabasePatch(COMMENTS_TABLE, commentId, {
+      preview_image_url: dataUrl,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn("[comment-mode] Preview snapshot skipped:", err);
+  }
 }
 
 /**
@@ -87,7 +238,9 @@ function getOrCreateSessionId() {
 
 function setTriggerActive(active) {
   var btn = document.querySelector(".floating-test-card__comment-btn");
-  if (btn) btn.classList.toggle("is-comment-mode-active", active);
+  if (!btn) return;
+  btn.classList.toggle("is-comment-mode-active", active);
+  btn.classList.toggle("is-active", active);
 }
 
 function ensureLayer() {
@@ -150,6 +303,8 @@ function exitCommentMode() {
 
 function shouldIgnorePlacementTarget(el) {
   if (!el) return true;
+  if (!(el instanceof Element)) return true;
+  if (el.closest("[data-review-mode-ui='true']")) return true;
   if (el.closest("#toggle-test-card")) return true;
   if (el.closest("#floating-test-card")) return true;
   if (el.closest("#page-transition")) return true;
@@ -238,7 +393,8 @@ function parseStoredComment(raw) {
  * Insert or update a row in `comments` after the user submits the inline form.
  *
  * Payload contracts (must match the existing schema exactly):
- *   INSERT — text, page_url, x_position, y_position, session_id
+ *   INSERT — text, page_url, x_position, y_position, x_ratio, y_ratio,
+ *            viewport_width, viewport_height, session_id, version
  *            (created_at / updated_at are Postgres defaults — we don't send them)
  *   PATCH  — text, updated_at
  *
@@ -261,14 +417,41 @@ async function persistComment(record, isUpdate) {
 
   var pageUrl = getPageUrlForQuery();
   var sessionId = getOrCreateSessionId();
+  var version = getPrototypeVersionIdFromWindow();
 
-  var rows = await supabaseInsert(COMMENTS_TABLE, {
+  var vw =
+    typeof window !== "undefined" && window.innerWidth > 0
+      ? window.innerWidth
+      : 0;
+  var vh =
+    typeof window !== "undefined" && window.innerHeight > 0
+      ? window.innerHeight
+      : 0;
+  var insertPayload = {
     text: storageText,
     page_url: pageUrl,
     x_position: record.x,
     y_position: record.y,
     session_id: sessionId,
-  });
+    version: version,
+    status: "unresolved",
+  };
+  if (vw > 0 && vh > 0) {
+    var vx =
+      record.positionAnchor === "viewport"
+        ? record.x
+        : record.x - window.scrollX;
+    var vy =
+      record.positionAnchor === "viewport"
+        ? record.y
+        : record.y - window.scrollY;
+    insertPayload.x_ratio = Math.min(1, Math.max(0, vx / vw));
+    insertPayload.y_ratio = Math.min(1, Math.max(0, vy / vh));
+    insertPayload.viewport_width = Math.round(vw);
+    insertPayload.viewport_height = Math.round(vh);
+  }
+
+  var rows = await supabaseInsert(COMMENTS_TABLE, insertPayload);
   var inserted = Array.isArray(rows) ? rows[0] : rows;
   if (!inserted || inserted.id == null) {
     throw new Error("Insert did not return a row id");
@@ -282,9 +465,10 @@ async function persistComment(record, isUpdate) {
 async function loadCommentsFromSupabase() {
   var pageUrl = getPageUrlForQuery();
   var sessionId = getOrCreateSessionId();
+  var version = getPrototypeVersionIdFromWindow();
   var rows;
   try {
-    rows = await fetchCommentsForPage(pageUrl, sessionId);
+    rows = await fetchCommentsForPage(pageUrl, sessionId, version);
   } catch (err) {
     console.error("Failed to load comments:", err);
     return;
@@ -301,19 +485,37 @@ async function loadCommentsFromSupabase() {
       id: row.id,
       x: Number(row.x_position),
       y: Number(row.y_position),
+      positionAnchor: inferPositionAnchorFromRow(row),
       text: parsed.body,
       authorName: parsed.authorName,
       authorPosition: parsed.authorPosition,
+      status:
+        row.status && String(row.status).toLowerCase() === "resolved"
+          ? "resolved"
+          : "unresolved",
     };
     state.comments.push(rec);
     renderMarker(rec);
   });
+  syncAllMarkerDomPositions();
 }
 
-function openCommentEditor(clientX, clientY, existing) {
+function openCommentEditor(pageX, pageY, existing) {
   // Only one editor at a time — silently dismiss any previously open one.
   closeOpenEditor();
   ensureLayer();
+  var anchorPageX = existing
+    ? existing.positionAnchor === "viewport"
+      ? existing.x + window.scrollX
+      : existing.x
+    : pageX;
+  var anchorPageY = existing
+    ? existing.positionAnchor === "viewport"
+      ? existing.y + window.scrollY
+      : existing.y
+    : pageY;
+  var viewX = anchorPageX - window.scrollX;
+  var viewY = anchorPageY - window.scrollY;
   var fieldId =
     existing && existing.id != null
       ? "comment-field-" + existing.id
@@ -344,8 +546,8 @@ function openCommentEditor(clientX, clientY, existing) {
   var pin = document.createElement("div");
   pin.className = "comment-mode-editor-pin";
   pin.appendChild(createIconImg(ICON_SRC));
-  pin.style.left = clientX + "px";
-  pin.style.top = clientY + "px";
+  pin.style.left = viewX + "px";
+  pin.style.top = viewY + "px";
 
   var card = document.createElement("div");
   card.className = "comment-mode-pin-card";
@@ -398,6 +600,7 @@ function openCommentEditor(clientX, clientY, existing) {
   submit.appendChild(createIconImg(SUBMIT_ICON_SRC));
 
   var deleteBtn = null;
+  var resolveBtn = null;
   if (existing && existing.id != null) {
     card.classList.add("comment-mode-pin-card--has-delete");
     deleteBtn = document.createElement("button");
@@ -411,16 +614,35 @@ function openCommentEditor(clientX, clientY, existing) {
     binGlyph.textContent = "delete";
     deleteBtn.appendChild(binGlyph);
   }
+  if (
+    existing &&
+    existing.id != null &&
+    existing.status !== "resolved"
+  ) {
+    resolveBtn = document.createElement("button");
+    resolveBtn.type = "button";
+    resolveBtn.className = "comment-mode-resolve";
+    resolveBtn.setAttribute("aria-label", "Resolve comment");
+    resolveBtn.setAttribute("title", "Resolve — remove from prototype, keep in overview");
+    resolveBtn.textContent = "Resolve";
+    card.classList.add("comment-mode-pin-card--has-delete");
+  }
 
   card.appendChild(closeBtn);
   card.appendChild(fields);
   card.appendChild(submit);
+  if (resolveBtn) card.appendChild(resolveBtn);
   if (deleteBtn) card.appendChild(deleteBtn);
   shell.appendChild(pin);
   shell.appendChild(card);
   state.layer.appendChild(shell);
 
-  state.openEditor = { shell: shell, existing: existing || null };
+  state.openEditor = {
+    shell: shell,
+    existing: existing || null,
+    anchorPageX: anchorPageX,
+    anchorPageY: anchorPageY,
+  };
 
   closeBtn.addEventListener("click", function (ev) {
     ev.preventDefault();
@@ -428,27 +650,7 @@ function openCommentEditor(clientX, clientY, existing) {
     closeOpenEditor();
   });
 
-  var rect = card.getBoundingClientRect();
-  /* Pin is centered on the click; align dialogue top with pin top. */
-  var pinHalf = EDITOR_PIN_SIZE_PX / 2;
-  var pinTop = clientY - pinHalf;
-  /*
-   * Keep the pin uncovered: if the click is left of viewport center, open the
-   * dialogue to the right of the pin; if right of center, open it to the left.
-   */
-  var clickLeftOfCenter = clientX < window.innerWidth / 2;
-  var preferredLeft = clickLeftOfCenter
-    ? clientX + pinHalf + EDITOR_CARD_GAP_PX
-    : clientX - pinHalf - EDITOR_CARD_GAP_PX - rect.width;
-
-  var pos = clampPanelPosition(
-    preferredLeft,
-    pinTop,
-    rect.width,
-    rect.height,
-  );
-  card.style.left = pos.left + "px";
-  card.style.top = pos.top + "px";
+  layoutEditorCardFromViewportPoint(shell, viewX, viewY);
 
   if (deleteBtn) {
     deleteBtn.addEventListener("click", async function (ev) {
@@ -479,6 +681,45 @@ function openCommentEditor(clientX, clientY, existing) {
     });
   }
 
+  if (resolveBtn) {
+    resolveBtn.addEventListener("click", async function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (!existing || existing.id == null) return;
+      if (
+        !window.confirm(
+          "Resolve this comment? It will no longer appear on the prototype but will stay in Comments overview.",
+        )
+      )
+        return;
+      var resolvedAt = new Date().toISOString();
+      try {
+        await supabasePatch(COMMENTS_TABLE, existing.id, {
+          status: "resolved",
+          resolved_at: resolvedAt,
+          updated_at: resolvedAt,
+        });
+      } catch (err) {
+        console.error("Comment resolve failed:", err);
+        alert("Could not resolve this comment. Please try again.");
+        return;
+      }
+      state.comments = state.comments.filter(function (c) {
+        return c.id !== existing.id;
+      });
+      document
+        .querySelectorAll(
+          '.comment-mode-marker[data-db-id="' + existing.id + '"]',
+        )
+        .forEach(function (n) {
+          n.remove();
+        });
+      state.openEditor = null;
+      shell.remove();
+      exitCommentMode();
+    });
+  }
+
   submit.addEventListener("click", async function (ev) {
     ev.stopPropagation();
     var bodyText = ta.value;
@@ -490,8 +731,12 @@ function openCommentEditor(clientX, clientY, existing) {
     var isUpdate = !!(existing && existing.id != null);
     var record = {
       id: existing && existing.id != null ? existing.id : null,
-      x: existing && existing.id != null ? existing.x : clientX,
-      y: existing && existing.id != null ? existing.y : clientY,
+      x: existing && existing.id != null ? existing.x : pageX,
+      y: existing && existing.id != null ? existing.y : pageY,
+      positionAnchor:
+        existing && existing.id != null
+          ? existing.positionAnchor || "page"
+          : "page",
       text: bodyText.trim(),
       authorName: nameInput.value.trim(),
       authorPosition: positionInput.value.trim(),
@@ -508,8 +753,14 @@ function openCommentEditor(clientX, clientY, existing) {
     var idx = state.comments.findIndex(function (c) {
       return c.id === record.id;
     });
-    if (idx >= 0) state.comments[idx] = record;
-    else state.comments.push(record);
+    if (idx >= 0) {
+      record.status =
+        existing && existing.status === "resolved" ? "resolved" : "unresolved";
+      state.comments[idx] = record;
+    } else {
+      record.status = "unresolved";
+      state.comments.push(record);
+    }
 
     document
       .querySelectorAll('.comment-mode-marker[data-db-id="' + record.id + '"]')
@@ -521,6 +772,10 @@ function openCommentEditor(clientX, clientY, existing) {
     shell.remove();
     renderMarker(record);
     exitCommentMode();
+
+    if (!isUpdate && record.id != null) {
+      void captureStaticPreviewAndPatch(record.id);
+    }
   });
 
   nameInput.focus();
@@ -533,10 +788,9 @@ function renderMarker(record) {
   btn.className = "comment-mode-marker";
   btn.dataset.dbId = String(record.id);
   btn.setAttribute("aria-label", "View or edit comment");
-  btn.style.left =
-    clampPanelPosition(record.x - 24, record.y - 24, 48, 48).left + "px";
-  btn.style.top =
-    clampPanelPosition(record.x - 24, record.y - 24, 48, 48).top + "px";
+  var pos = markerFixedTopLeft(record);
+  btn.style.left = pos.left + "px";
+  btn.style.top = pos.top + "px";
 
   var img = document.createElement("img");
   img.src = ICON_SRC;
@@ -564,7 +818,9 @@ function onDocumentClick(ev) {
   // (including outside any other comment chrome). Swallow this click so it doesn't
   // immediately open a new editor — the user must click again to start a new one.
   if (state.openEditor) {
-    if (ev.target.closest(".comment-mode-editor-shell")) return;
+    // Same ignore list as placement mode: Review Mode panel/launcher must stay clickable
+    // (e.g. #close-test-card) even though this handler runs in the capture phase.
+    if (shouldIgnorePlacementTarget(ev.target)) return;
     ev.preventDefault();
     ev.stopPropagation();
     closeOpenEditor();
@@ -577,7 +833,8 @@ function onDocumentClick(ev) {
   ev.preventDefault();
   ev.stopPropagation();
 
-  openCommentEditor(ev.clientX, ev.clientY, null);
+  var pxy = eventPageXY(ev);
+  openCommentEditor(pxy.x, pxy.y, null);
 }
 
 function onKeyDown(ev) {
@@ -610,6 +867,7 @@ function bindTrigger(el) {
 async function init() {
   getOrCreateSessionId();
   attachGlobalListenersOnce();
+  attachViewportScrollListenersOnce();
   bindTrigger(document.querySelector(".floating-test-card__comment-btn"));
   var obs = new MutationObserver(function () {
     bindTrigger(document.querySelector(".floating-test-card__comment-btn"));

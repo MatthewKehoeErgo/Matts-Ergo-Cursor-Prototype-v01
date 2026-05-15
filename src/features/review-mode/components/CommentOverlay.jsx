@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLocation } from "react-router-dom";
 import placedCommentIcon from "../assets/Comment - Placed - Icon.svg?url";
 import closeSmallIcon from "../assets/close_small.svg?url";
 import submitIcon from "../assets/Submit Icon.svg?url";
@@ -18,22 +19,39 @@ function clampPosition(left, top, width, height, viewport) {
   };
 }
 
+/** Viewport (client) center for fixed-position chrome; supports page-space anchors. */
+function editorViewportCenter(editor) {
+  if (!editor) return { x: 0, y: 0 };
+  const sx = typeof window !== "undefined" ? window.scrollX : 0;
+  const sy = typeof window !== "undefined" ? window.scrollY : 0;
+  if (editor.positionAnchor === "viewport") {
+    return { x: Number(editor.x), y: Number(editor.y) };
+  }
+  return { x: Number(editor.x) - sx, y: Number(editor.y) - sy };
+}
+
 function previewEditorPosition(editor, viewport) {
   if (!editor) return null;
 
+  const { x: vx, y: vy } = editorViewportCenter(editor);
   const cardWidth = Math.min(392, Math.max(240, viewport.width - 120));
   const cardHeight = editor.id != null ? 250 : 208;
   const pinHalf = EDITOR_PIN_SIZE / 2;
-  const pinTop = editor.y - pinHalf;
+  const pinTop = vy - pinHalf;
   const preferredLeft =
-    editor.x < viewport.width / 2
-      ? editor.x + pinHalf + EDITOR_CARD_GAP
-      : editor.x - pinHalf - EDITOR_CARD_GAP - cardWidth;
+    vx < viewport.width / 2
+      ? vx + pinHalf + EDITOR_CARD_GAP
+      : vx - pinHalf - EDITOR_CARD_GAP - cardWidth;
 
   return clampPosition(preferredLeft, pinTop, cardWidth, cardHeight, viewport);
 }
 
 export function CommentOverlay() {
+  const location = useLocation();
+  const path = (location.pathname || "").replace(/\/$/, "");
+  const isCommentsOverview =
+    path === "comments-overview" || path.endsWith("/comments-overview");
+
   const {
     panelOpen,
     commentModeActive,
@@ -47,20 +65,29 @@ export function CommentOverlay() {
     updateOpenEditor,
     saveOpenEditor,
     deleteOpenEditor,
+    resolveOpenEditor,
   } = useReviewMode();
   const firstFieldRef = useRef(null);
+  const editorFocusSessionRef = useRef(null);
   const [viewport, setViewport] = useState(() => ({
     width: typeof window === "undefined" ? 1280 : window.innerWidth,
     height: typeof window === "undefined" ? 720 : window.innerHeight,
   }));
+  const [scrollTick, setScrollTick] = useState(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
+    const bumpScroll = () => setScrollTick((n) => n + 1);
     const onResize = () => {
       setViewport({ width: window.innerWidth, height: window.innerHeight });
+      bumpScroll();
     };
+    window.addEventListener("scroll", bumpScroll, { passive: true, capture: true });
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("scroll", bumpScroll, { capture: true });
+      window.removeEventListener("resize", onResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -81,18 +108,30 @@ export function CommentOverlay() {
     };
   }, [commentModeActive]);
 
-  useEffect(() => {
-    if (!openEditor || !firstFieldRef.current) return;
-    firstFieldRef.current.focus();
+  useLayoutEffect(() => {
+    if (!openEditor) {
+      editorFocusSessionRef.current = null;
+      return;
+    }
+    const sessionKey =
+      openEditor.id != null
+        ? `id:${openEditor.id}`
+        : `new:${openEditor.x},${openEditor.y}`;
+    if (editorFocusSessionRef.current === sessionKey) return;
+    editorFocusSessionRef.current = sessionKey;
+    firstFieldRef.current?.focus();
   }, [openEditor]);
 
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
 
     const onDocumentClick = (event) => {
+      if (isCommentsOverview) return;
+
       if (openEditor) {
         if (event.target instanceof Element) {
           if (event.target.closest("[data-review-mode-editor='true']")) return;
+          if (event.target.closest("[data-review-mode-ui='true']")) return;
         }
         event.preventDefault();
         event.stopPropagation();
@@ -105,7 +144,15 @@ export function CommentOverlay() {
 
       event.preventDefault();
       event.stopPropagation();
-      openEditorForCreate(event.clientX, event.clientY);
+      const px =
+        typeof event.pageX === "number"
+          ? event.pageX
+          : event.clientX + window.scrollX;
+      const py =
+        typeof event.pageY === "number"
+          ? event.pageY
+          : event.clientY + window.scrollY;
+      openEditorForCreate(px, py);
     };
 
     const onKeyDown = (event) => {
@@ -127,36 +174,43 @@ export function CommentOverlay() {
     closeEditor,
     commentModeActive,
     exitCommentMode,
+    isCommentsOverview,
     isIgnoredPlacementTarget,
     openEditor,
     openEditorForCreate,
   ]);
 
   const markers = useMemo(() => {
-    if (!panelOpen) return [];
+    if (isCommentsOverview || !panelOpen) return [];
     return comments.filter((comment) => comment.id !== openEditor?.id);
-  }, [comments, openEditor?.id, panelOpen]);
+  }, [comments, isCommentsOverview, openEditor?.id, panelOpen]);
 
   const editorPosition = useMemo(
     () => previewEditorPosition(openEditor, viewport),
-    [openEditor, viewport],
+    [openEditor, viewport, scrollTick],
+  );
+
+  const editorPinCenter = useMemo(
+    () => (openEditor ? editorViewportCenter(openEditor) : { x: 0, y: 0 }),
+    [openEditor, scrollTick],
   );
 
   if (typeof document === "undefined") return null;
+  if (isCommentsOverview && !commentModeActive && !openEditor) return null;
   if (!panelOpen && !commentModeActive && !openEditor) return null;
 
   return createPortal(
     <>
-      {(panelOpen || openEditor) && (
+      {(panelOpen || openEditor) && !isCommentsOverview && (
         <div className="review-mode-layer" aria-live="polite">
           {markers.map((comment) => {
-            const pos = clampPosition(
-              comment.x - 24,
-              comment.y - 24,
-              48,
-              48,
-              viewport,
-            );
+            const sx = typeof window !== "undefined" ? window.scrollX : 0;
+            const sy = typeof window !== "undefined" ? window.scrollY : 0;
+            const vx =
+              comment.positionAnchor === "viewport" ? comment.x : comment.x - sx;
+            const vy =
+              comment.positionAnchor === "viewport" ? comment.y : comment.y - sy;
+            const pos = clampPosition(vx - 24, vy - 24, 48, 48, viewport);
 
             return (
               <button
@@ -179,7 +233,7 @@ export function CommentOverlay() {
         </div>
       )}
 
-      {commentModeActive && (
+      {commentModeActive && !isCommentsOverview && (
         <p
           id="review-mode-hint"
           className="review-mode-hint"
@@ -191,11 +245,14 @@ export function CommentOverlay() {
         </p>
       )}
 
-      {openEditor && editorPosition && (
+      {openEditor && editorPosition && !isCommentsOverview && (
         <div className="review-mode-editor-shell" data-review-mode-ui="true">
           <div
             className="review-mode-editor-pin"
-            style={{ left: openEditor.x, top: openEditor.y }}
+            style={{
+              left: editorPinCenter.x,
+              top: editorPinCenter.y,
+            }}
             aria-hidden="true"
           >
             <img src={placedCommentIcon} alt="" aria-hidden />
@@ -205,6 +262,9 @@ export function CommentOverlay() {
             className={[
               "review-mode-editor-card",
               openEditor.id != null ? "review-mode-editor-card--has-delete" : "",
+              openEditor.id != null && openEditor.status !== "resolved"
+                ? "review-mode-editor-card--has-resolve"
+                : "",
             ]
               .filter(Boolean)
               .join(" ")}
@@ -281,6 +341,23 @@ export function CommentOverlay() {
             >
               <img src={submitIcon} alt="" aria-hidden />
             </button>
+
+            {openEditor.id != null && openEditor.status !== "resolved" && (
+              <button
+                type="button"
+                className="review-mode-editor__resolve"
+                aria-label="Resolve comment"
+                title="Resolve — remove from prototype, keep in overview"
+                data-review-mode-ui="true"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  resolveOpenEditor();
+                }}
+              >
+                Resolve
+              </button>
+            )}
 
             {openEditor.id != null && (
               <button

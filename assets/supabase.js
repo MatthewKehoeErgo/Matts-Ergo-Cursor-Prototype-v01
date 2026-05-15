@@ -1,6 +1,10 @@
 /**
  * Minimal Supabase REST client for static prototypes (no bundler required).
  * Uses the anon key; ensure RLS policies allow the operations you need.
+ *
+ * `comments.version` — prototype id (`prototype-v1` | `prototype-v2`); required on new inserts.
+ * Optional placement columns: `x_ratio`, `y_ratio`, `viewport_width`, `viewport_height`, `preview_image_url`.
+ * Lifecycle: `status` (`unresolved` | `resolved`), `resolved_at` (timestamptz, null until resolved).
  */
 
 export const SUPABASE_URL = "https://sctpnjrcluonpomdtnfp.supabase.co";
@@ -93,18 +97,34 @@ export async function supabaseDelete(table, rowId) {
 }
 
 /**
- * GET comments for the current `page_url` and `session_id`.
+ * GET comments for the current `page_url`, `session_id`, and optional `version`.
  *
  * IMPORTANT: Each PostgREST filter is its own query parameter. We use
  * URLSearchParams so only the *values* are URL-encoded — never the whole
  * query string. The shape is:
- *   ?select=*&page_url=eq.<encoded url>&session_id=eq.<uuid>&order=created_at.asc
+ *   ?select=*&page_url=eq.<encoded url>&session_id=eq.<uuid>&version=eq.<id>&order=created_at.asc
+ *
+ * @param {string} pageUrl
+ * @param {string} sessionId
+ * @param {string} [version] — when set, only rows for that prototype version (e.g. `prototype-v2`).
+ * @param {{ onlyUnresolved?: boolean }} [options] — when `onlyUnresolved` is true (default), only rows with `status=unresolved` (prototype pins).
  */
-export async function fetchCommentsForPage(pageUrl, sessionId) {
+export async function fetchCommentsForPage(
+  pageUrl,
+  sessionId,
+  version,
+  { onlyUnresolved = true } = {},
+) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/comments`);
   url.searchParams.set("select", "*");
   url.searchParams.set("page_url", `eq.${pageUrl}`);
   url.searchParams.set("session_id", `eq.${sessionId}`);
+  if (version != null && version !== "") {
+    url.searchParams.set("version", `eq.${version}`);
+  }
+  if (onlyUnresolved) {
+    url.searchParams.set("status", "eq.unresolved");
+  }
   url.searchParams.set("order", "created_at.asc");
 
   const response = await fetch(url.toString(), {
@@ -119,9 +139,16 @@ export async function fetchCommentsForPage(pageUrl, sessionId) {
 
 /**
  * Comments Overview — all accessible rows, newest first.
- * Optional PostgREST filters: `pageUrl` / `sessionId` (each encoded as the value of `eq.<raw>`).
+ * Optional PostgREST filters: `pageUrl` / `sessionId` / `version` / `status` (each encoded as the value of `eq.<raw>`).
+ *
+ * @param {string} [options.status] — when `'unresolved'` or `'resolved'`, filters `comments.status`; omit for all statuses.
  */
-export async function fetchCommentsOverview({ pageUrl, sessionId } = {}) {
+export async function fetchCommentsOverview({
+  pageUrl,
+  sessionId,
+  version,
+  status,
+} = {}) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/comments`);
   url.searchParams.set("select", "*");
   url.searchParams.set("order", "created_at.desc");
@@ -130,6 +157,13 @@ export async function fetchCommentsOverview({ pageUrl, sessionId } = {}) {
   }
   if (sessionId != null && sessionId !== "") {
     url.searchParams.set("session_id", `eq.${sessionId}`);
+  }
+  if (version != null && version !== "") {
+    url.searchParams.set("version", `eq.${version}`);
+  }
+  const s = status != null ? String(status).toLowerCase() : "";
+  if (s === "unresolved" || s === "resolved") {
+    url.searchParams.set("status", `eq.${s}`);
   }
 
   const response = await fetch(url.toString(), {

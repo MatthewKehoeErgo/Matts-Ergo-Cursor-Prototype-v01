@@ -1,6 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  getPrototypeVersionLabel,
+  PROTOTYPE_VERSION_V1,
+  PROTOTYPE_VERSION_V2,
+} from "../../../constants/prototypeVersion.js";
 import { useReviewMode } from "../context/ReviewModeContext.jsx";
 import styles from "./ReviewCommentsOverviewPage.module.css";
+
+const VERSION_FILTER_CHOICES = [
+  { value: PROTOTYPE_VERSION_V1, label: getPrototypeVersionLabel(PROTOTYPE_VERSION_V1) },
+  { value: PROTOTYPE_VERSION_V2, label: getPrototypeVersionLabel(PROTOTYPE_VERSION_V2) },
+];
+
+function parseVersionFromSearchParams(searchParams) {
+  const raw = searchParams.get("version");
+  if (raw === PROTOTYPE_VERSION_V1 || raw === PROTOTYPE_VERSION_V2) return raw;
+  return PROTOTYPE_VERSION_V2;
+}
 
 const PATH_LABELS = new Map([
   ["", "Home"],
@@ -61,33 +78,78 @@ function formatWhen(iso) {
   }
 }
 
+function formatLifecycleStatus(row) {
+  return row?.status === "resolved" ? "Resolved" : "Unresolved";
+}
+
+function clamp01(value) {
+  return Math.min(1, Math.max(0, value));
+}
+
 function previewRatios(row) {
   const x = Number.isFinite(row?.xRatio) ? row.xRatio : null;
   const y = Number.isFinite(row?.yRatio) ? row.yRatio : null;
   if (x != null && y != null) {
     return {
-      x: Math.min(1, Math.max(0, x)),
-      y: Math.min(1, Math.max(0, y)),
+      x: clamp01(x),
+      y: clamp01(y),
       approximate: false,
     };
   }
+
+  const vw = Number(row?.viewportWidth);
+  const vh = Number(row?.viewportHeight);
+  const px = Number(row?.x);
+  const py = Number(row?.y);
+  if (
+    Number.isFinite(vw) &&
+    vw > 0 &&
+    Number.isFinite(vh) &&
+    vh > 0 &&
+    Number.isFinite(px) &&
+    Number.isFinite(py)
+  ) {
+    return {
+      x: clamp01(px / vw),
+      y: clamp01(py / vh),
+      approximate: false,
+    };
+  }
+
   return { x: 0.5, y: 0.5, approximate: true };
 }
 
 export function ReviewCommentsOverviewPage() {
   const { repository, openDefaultScreen } = useReviewMode();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filterPage, setFilterPage] = useState("");
   const [filterSession, setFilterSession] = useState("");
+  /** Server-side filter: `unresolved` (default) or `resolved`. */
+  const [lifecycleFilter, setLifecycleFilter] = useState("unresolved");
   const [selectedId, setSelectedId] = useState(null);
+
+  const filterVersion = useMemo(
+    () => parseVersionFromSearchParams(searchParams),
+    [searchParams],
+  );
+
+  useEffect(() => {
+    const raw = searchParams.get("version");
+    if (raw === PROTOTYPE_VERSION_V1 || raw === PROTOTYPE_VERSION_V2) return;
+    setSearchParams({ version: PROTOTYPE_VERSION_V2 }, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await repository.listAll();
+      const data = await repository.listAll({
+        version: filterVersion,
+        status: lifecycleFilter,
+      });
       setRows(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error("[ReviewCommentsOverviewPage]", err);
@@ -100,7 +162,7 @@ export function ReviewCommentsOverviewPage() {
     } finally {
       setLoading(false);
     }
-  }, [repository]);
+  }, [repository, filterVersion, lifecycleFilter]);
 
   useEffect(() => {
     load();
@@ -149,6 +211,16 @@ export function ReviewCommentsOverviewPage() {
     [filtered, selectedId],
   );
   const previewPos = selected ? previewRatios(selected) : null;
+  const previewStageStyle = useMemo(() => {
+    if (!selected) return undefined;
+    const w = Number(selected.viewportWidth);
+    const h = Number(selected.viewportHeight);
+    if (Number.isFinite(w) && w > 0 && Number.isFinite(h) && h > 0) {
+      return { aspectRatio: `${Math.round(w)} / ${Math.round(h)}` };
+    }
+    return undefined;
+  }, [selected]);
+  const previewBackdrop = selected?.previewImageUrl ?? null;
 
   return (
     <div className={styles.page}>
@@ -156,7 +228,7 @@ export function ReviewCommentsOverviewPage() {
         <button
           type="button"
           className={styles.backBtn}
-          onClick={openDefaultScreen}
+          onClick={() => openDefaultScreen(filterVersion)}
         >
           ← Back to the prototype
         </button>
@@ -164,8 +236,9 @@ export function ReviewCommentsOverviewPage() {
         <div className={styles.titleBlock}>
           <h1 className={styles.title}>Comments overview</h1>
           <p className={styles.subtitle}>
-            Read-only summary of feedback across the prototype. Select a row to
-            see full text and where it was placed on screen.
+            Comments for one prototype version at a time (nothing is mixed). Use
+            the version control to switch. Screen and session filters apply
+            within that version only.
           </p>
         </div>
       </header>
@@ -177,21 +250,26 @@ export function ReviewCommentsOverviewPage() {
       )}
 
       {!loading && error && (
-        <div className={`${styles.panel} ${styles.errorPanel}`} role="alert">
+        <div
+          className={`${styles.panel} ${styles.contentMax} ${styles.errorPanel}`}
+          role="alert"
+        >
           {error}
         </div>
       )}
 
       {!loading && !error && filtered.length === 0 && rows.length === 0 && (
-        <div className={styles.panel}>
+        <div className={`${styles.panel} ${styles.contentMax}`}>
           <div className={styles.emptyPanel}>
-            No comments yet. Add feedback from Review Mode on any screen.
+            {lifecycleFilter === "resolved"
+              ? `No resolved comments for ${getPrototypeVersionLabel(filterVersion)}.`
+              : `No comments yet for ${getPrototypeVersionLabel(filterVersion)}. Add feedback from Review Mode on that prototype.`}
           </div>
         </div>
       )}
 
       {!loading && !error && rows.length > 0 && filtered.length === 0 && (
-        <div className={styles.panel}>
+        <div className={`${styles.panel} ${styles.contentMax}`}>
           <div className={styles.emptyPanel}>
             No comments match the selected filters. Try clearing filters.
           </div>
@@ -201,7 +279,9 @@ export function ReviewCommentsOverviewPage() {
       {!loading && !error && filtered.length > 0 && (
         <div className={styles.grid}>
           <section className={styles.panel} aria-label="Comments table">
-            <div className={styles.panelHead}>All comments</div>
+            <div className={styles.panelHead}>
+              Comments — {getPrototypeVersionLabel(filterVersion)}
+            </div>
 
             <div className={styles.filters}>
               <div className={styles.filterField}>
@@ -241,6 +321,76 @@ export function ReviewCommentsOverviewPage() {
                   ))}
                 </select>
               </div>
+
+              <div className={styles.filterField}>
+                <label className={styles.filterLabel} htmlFor="filter-version">
+                  Prototype version
+                </label>
+                <select
+                  id="filter-version"
+                  className={styles.select}
+                  value={filterVersion}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    if (
+                      next !== PROTOTYPE_VERSION_V1 &&
+                      next !== PROTOTYPE_VERSION_V2
+                    ) {
+                      return;
+                    }
+                    setSearchParams(
+                      (prev) => {
+                        const merged = new URLSearchParams(prev);
+                        merged.set("version", next);
+                        return merged;
+                      },
+                      { replace: true },
+                    );
+                  }}
+                >
+                  {VERSION_FILTER_CHOICES.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className={styles.filterField}>
+                <span className={styles.filterLabel} id="lifecycle-toggle-label">
+                  Status
+                </span>
+                <div
+                  className={styles.lifecycleToggle}
+                  role="group"
+                  aria-labelledby="lifecycle-toggle-label"
+                >
+                  <button
+                    type="button"
+                    className={`${styles.lifecycleToggleBtn} ${
+                      lifecycleFilter === "unresolved"
+                        ? styles.lifecycleToggleBtnActive
+                        : ""
+                    }`}
+                    aria-pressed={lifecycleFilter === "unresolved"}
+                    onClick={() => setLifecycleFilter("unresolved")}
+                  >
+                    Unresolved
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.lifecycleToggleBtn} ${
+                      lifecycleFilter === "resolved"
+                        ? styles.lifecycleToggleBtnActive
+                        : ""
+                    }`}
+                    aria-pressed={lifecycleFilter === "resolved"}
+                    onClick={() => setLifecycleFilter("resolved")}
+                  >
+                    Resolved
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className={styles.tableWrap}>
@@ -249,6 +399,9 @@ export function ReviewCommentsOverviewPage() {
                   <tr>
                     <th>Comment</th>
                     <th>Screen</th>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Resolved</th>
                     <th>Created</th>
                     <th>Action</th>
                   </tr>
@@ -271,6 +424,15 @@ export function ReviewCommentsOverviewPage() {
                         </td>
                         <td className={styles.screenCell}>
                           {screenLabelFromPageUrl(row.pageUrl)}
+                        </td>
+                        <td className={styles.versionCell}>
+                          {getPrototypeVersionLabel(row.version)}
+                        </td>
+                        <td className={styles.versionCell}>
+                          {formatLifecycleStatus(row)}
+                        </td>
+                        <td className={styles.dateCell}>
+                          {formatWhen(row.resolvedAt)}
                         </td>
                         <td className={styles.dateCell}>
                           {formatWhen(row.createdAt)}
@@ -313,6 +475,24 @@ export function ReviewCommentsOverviewPage() {
                     </span>
                   </li>
                   <li className={styles.metaRow}>
+                    <span className={styles.metaLabel}>Version</span>
+                    <span className={styles.metaValue}>
+                      {getPrototypeVersionLabel(selected.version)}
+                    </span>
+                  </li>
+                  <li className={styles.metaRow}>
+                    <span className={styles.metaLabel}>Status</span>
+                    <span className={styles.metaValue}>
+                      {formatLifecycleStatus(selected)}
+                    </span>
+                  </li>
+                  <li className={styles.metaRow}>
+                    <span className={styles.metaLabel}>Resolved</span>
+                    <span className={styles.metaValue}>
+                      {formatWhen(selected.resolvedAt)}
+                    </span>
+                  </li>
+                  <li className={styles.metaRow}>
                     <span className={styles.metaLabel}>Created</span>
                     <span className={styles.metaValue}>
                       {formatWhen(selected.createdAt)}
@@ -328,8 +508,23 @@ export function ReviewCommentsOverviewPage() {
 
                 <div className={styles.previewBox}>
                   <div className={styles.previewLabel}>Placement preview</div>
-                  <div className={styles.previewStage}>
-                    <div className={styles.previewPlaceholderGrid} aria-hidden />
+                  <div
+                    className={styles.previewStage}
+                    style={previewStageStyle}
+                  >
+                    {previewBackdrop ? (
+                      <img
+                        className={styles.previewSnapshot}
+                        src={previewBackdrop}
+                        alt=""
+                        decoding="async"
+                      />
+                    ) : (
+                      <div
+                        className={styles.previewPlaceholderGrid}
+                        aria-hidden
+                      />
+                    )}
                     {previewPos && (
                       <div
                         className={styles.marker}
@@ -339,7 +534,7 @@ export function ReviewCommentsOverviewPage() {
                         }}
                         title={
                           previewPos.approximate
-                            ? "Approximate position (no ratio stored)"
+                            ? "Approximate position (no ratio or viewport stored)"
                             : "Comment anchor"
                         }
                       />
@@ -349,8 +544,9 @@ export function ReviewCommentsOverviewPage() {
 
                 {previewPos?.approximate && (
                   <p className={styles.metaMuted}>
-                    Position ratios were not stored for this comment; marker is
-                    centered for orientation.
+                    Position ratios were not stored for this comment, and
+                    viewport size was missing; marker is centered for
+                    orientation.
                   </p>
                 )}
               </div>

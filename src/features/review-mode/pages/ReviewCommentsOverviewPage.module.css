@@ -5,19 +5,22 @@
   padding: 24px;
   font-family: var(--review-mode-font-sans);
   color: var(--review-mode-text-on-panel);
+  --overview-content-max: 2400px;
   background:
     radial-gradient(circle at top right, rgba(53, 192, 179, 0.12), transparent 30%),
     linear-gradient(180deg, #14181f 0%, #101319 100%);
 }
 
 .topBar {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--overview-content-max);
   margin: 0 auto 20px;
   padding: 20px 24px;
   background: var(--review-mode-surface-panel);
   border: 1px solid var(--review-mode-border-panel);
   border-radius: var(--review-mode-radius-panel);
   box-shadow: var(--review-mode-shadow-panel);
+  box-sizing: border-box;
 }
 
 .backBtn {
@@ -65,12 +68,15 @@
 }
 
 .grid {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--overview-content-max);
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  /* Same 1fr : detail ratio as at 1440px max, scaled for 2400px cap (320→533, 420→700). */
+  grid-template-columns: minmax(0, 1fr) minmax(533px, 700px);
   gap: 20px;
   align-items: start;
+  box-sizing: border-box;
 }
 
 @media (max-width: 1080px) {
@@ -110,6 +116,41 @@
   flex-direction: column;
   gap: 4px;
   min-width: 180px;
+}
+
+.lifecycleToggle {
+  display: inline-flex;
+  border: 1px solid var(--review-mode-border-control);
+  border-radius: var(--review-mode-radius-control);
+  overflow: hidden;
+  background: var(--review-mode-surface-panel);
+}
+
+.lifecycleToggleBtn {
+  padding: 8px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--review-mode-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.lifecycleToggleBtn:hover {
+  color: var(--review-mode-text-on-panel);
+  background: var(--review-mode-surface-hover);
+}
+
+.lifecycleToggleBtn:focus-visible {
+  outline: 2px solid var(--review-mode-accent-soft);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.lifecycleToggleBtn + .lifecycleToggleBtn {
+  border-left: 1px solid var(--review-mode-border-control);
 }
 
 .filterLabel {
@@ -188,6 +229,12 @@
 .screenCell {
   color: var(--review-mode-text-on-panel);
   font-weight: 500;
+}
+
+.versionCell {
+  color: var(--review-mode-text-on-panel);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .dateCell {
@@ -312,12 +359,25 @@
   background: linear-gradient(145deg, #313745 0%, #272c37 48%, #212630 100%);
 }
 
+.previewSnapshot {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
 .previewPlaceholderGrid {
   position: absolute;
   inset: 12%;
   border: 1px dashed rgba(255, 255, 255, 0.18);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
+  z-index: 0;
 }
 
 .marker {
@@ -329,6 +389,7 @@
   border-radius: 50%;
   background: var(--review-mode-submit-fill);
   border: 2px solid #fff;
+  z-index: 1;
   box-shadow:
     0 0 0 3px rgba(95, 214, 204, 0.18),
     0 2px 10px rgba(0, 0, 0, 0.35);
@@ -368,11 +429,21 @@
   }
 }
 
+.contentMax {
+  width: 100%;
+  max-width: var(--overview-content-max);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
 .loading {
-  max-width: 1440px;
+  width: 100%;
+  max-width: var(--overview-content-max);
   margin: 0 auto;
   padding: 32px;
   text-align: center;
   color: var(--review-mode-text-muted);
   font-size: 14px;
+  box-sizing: border-box;
 }

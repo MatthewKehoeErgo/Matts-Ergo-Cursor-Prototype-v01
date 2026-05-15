@@ -26,16 +26,18 @@ import {
 } from "./supabase.js";
 import { getPrototypeVersionIdFromWindow } from "./prototype-version.js";
 import { toJpeg } from "html-to-image";
-import placedCommentIcon from "./Comment - Placed - Icon.svg?url";
-import submitIcon from "./Submit Icon.svg?url";
-import closeSmallIcon from "./close_small.svg?url";
+import {
+  closeSmallIconUrl,
+  placedCommentIconUrl,
+  submitIconUrl,
+} from "./review-mode-asset-urls.js";
 
 const COMMENTS_TABLE = "comments";
 const SESSION_STORAGE_KEY = "prototype-comments-session-id";
 const PREVIEW_PATCH_MAX_URL_LENGTH = 2400000;
-const ICON_SRC = placedCommentIcon;
-const SUBMIT_ICON_SRC = submitIcon;
-const CLOSE_ICON_SRC = closeSmallIcon;
+const ICON_SRC = placedCommentIconUrl;
+const SUBMIT_ICON_SRC = submitIconUrl;
+const CLOSE_ICON_SRC = closeSmallIconUrl;
 
 /**
  * Outer diameter of `.comment-mode-editor-pin` (must match `comment-mode.css`;

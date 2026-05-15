@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import closeSmallIcon from "../assets/close_small.svg?url";
-import dragPanIcon from "../assets/drag_pan.svg?url";
+import {
+  closeSmallIconUrl,
+  dragPanIconUrl,
+} from "../reviewModeAssetUrls.js";
 
 const PANEL_MARGIN = 24;
 
@@ -142,7 +144,7 @@ export function ReviewModePanel({
         data-review-mode-ui="true"
         onClick={onClosePanel}
       >
-        <img src={closeSmallIcon} alt="" aria-hidden />
+        <img src={closeSmallIconUrl} alt="" aria-hidden />
       </button>
 
       <div
@@ -152,7 +154,7 @@ export function ReviewModePanel({
         onPointerDown={onHandlePointerDown}
       >
         <span className="review-mode-panel__grip" aria-hidden>
-          <img src={dragPanIcon} alt="" width={18} height={18} />
+          <img src={dragPanIconUrl} alt="" width={18} height={18} />
         </span>
         <h2 className="review-mode-panel__title">Review Mode</h2>
       </div>

@@ -1,9 +1,11 @@
 import { useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
-import placedCommentIcon from "../assets/Comment - Placed - Icon.svg?url";
-import closeSmallIcon from "../assets/close_small.svg?url";
-import submitIcon from "../assets/Submit Icon.svg?url";
+import {
+  closeSmallIconUrl,
+  placedCommentIconUrl,
+  submitIconUrl,
+} from "../reviewModeAssetUrls.js";
 import { useReviewMode } from "../context/ReviewModeContext.jsx";
 
 const EDITOR_PIN_SIZE = 56 * 0.7;
@@ -226,7 +228,7 @@ export function CommentOverlay() {
                   openEditorForComment(comment);
                 }}
               >
-                <img src={placedCommentIcon} alt="" aria-hidden />
+                <img src={placedCommentIconUrl} alt="" aria-hidden />
               </button>
             );
           })}
@@ -255,7 +257,7 @@ export function CommentOverlay() {
             }}
             aria-hidden="true"
           >
-            <img src={placedCommentIcon} alt="" aria-hidden />
+            <img src={placedCommentIconUrl} alt="" aria-hidden />
           </div>
 
           <div
@@ -286,7 +288,7 @@ export function CommentOverlay() {
                 closeEditor();
               }}
             >
-              <img src={closeSmallIcon} alt="" aria-hidden />
+              <img src={closeSmallIconUrl} alt="" aria-hidden />
             </button>
 
             <div className="review-mode-editor__fields">
@@ -339,7 +341,7 @@ export function CommentOverlay() {
                 saveOpenEditor();
               }}
             >
-              <img src={submitIcon} alt="" aria-hidden />
+              <img src={submitIconUrl} alt="" aria-hidden />
             </button>
 
             {openEditor.id != null && openEditor.status !== "resolved" && (

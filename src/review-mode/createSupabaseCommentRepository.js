@@ -62,6 +62,8 @@ function normalizeComment(row) {
     body: parsed.body,
     authorName: parsed.authorName,
     authorPosition: parsed.authorPosition,
+    coordinateSpace:
+      parsed.coordinateSpace === "scroll_root" ? "scroll_root" : "document",
     createdAt: row?.created_at ?? null,
     updatedAt: row?.updated_at ?? null,
   };
@@ -89,7 +91,12 @@ export function createSupabaseCommentRepository() {
 
     async create(comment) {
       const rows = await supabaseInsert(COMMENTS_TABLE, {
-        text: serializeStoredComment(comment),
+        text: serializeStoredComment({
+          authorName: comment.authorName,
+          authorPosition: comment.authorPosition,
+          body: comment.body,
+          coordinateSpace: comment.coordinateSpace,
+        }),
         page_url: comment.pageUrl,
         x_position: comment.x,
         y_position: comment.y,
@@ -118,7 +125,12 @@ export function createSupabaseCommentRepository() {
 
     async update(comment) {
       const rows = await supabasePatch(COMMENTS_TABLE, comment.id, {
-        text: serializeStoredComment(comment),
+        text: serializeStoredComment({
+          authorName: comment.authorName,
+          authorPosition: comment.authorPosition,
+          body: comment.body,
+          coordinateSpace: comment.coordinateSpace,
+        }),
         updated_at: new Date().toISOString(),
       });
       const updated = Array.isArray(rows) ? rows[0] : rows;

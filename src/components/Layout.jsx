@@ -237,7 +237,7 @@ export function Layout() {
             </div>
           </header>
 
-          <div className="content-scroll">
+          <div className="content-scroll" data-review-mode-scroll-root>
             <Outlet />
           </div>
         </div>

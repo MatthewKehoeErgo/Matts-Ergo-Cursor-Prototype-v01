@@ -9,11 +9,17 @@ export function serializeStoredComment({
   authorName = "",
   authorPosition = "",
   body = "",
+  coordinateSpace,
 }) {
+  const coordLine =
+    coordinateSpace === "scroll_root"
+      ? `coord_space:${coordinateSpace}\n`
+      : "";
   return (
     META_PREFIX +
     `name:${sanitizeMetaLine(authorName)}\n` +
     `position:${sanitizeMetaLine(authorPosition)}\n` +
+    coordLine +
     BODY_SEPARATOR +
     String(body || "").trim()
   );
@@ -25,6 +31,7 @@ export function parseStoredComment(raw) {
       authorName: "",
       authorPosition: "",
       body: raw || "",
+      coordinateSpace: undefined,
     };
   }
 
@@ -34,6 +41,7 @@ export function parseStoredComment(raw) {
       authorName: "",
       authorPosition: "",
       body: raw,
+      coordinateSpace: undefined,
     };
   }
 
@@ -41,13 +49,17 @@ export function parseStoredComment(raw) {
   const body = raw.slice(sepIndex + BODY_SEPARATOR.length);
   let authorName = "";
   let authorPosition = "";
+  let coordinateSpace;
 
   metaBlock.split("\n").forEach((line) => {
     if (line.indexOf("name:") === 0) authorName = line.slice(5).trim();
     else if (line.indexOf("position:") === 0) {
       authorPosition = line.slice(9).trim();
+    } else if (line.indexOf("coord_space:") === 0) {
+      const v = line.slice(12).trim();
+      if (v === "scroll_root") coordinateSpace = "scroll_root";
     }
   });
 
-  return { authorName, authorPosition, body };
+  return { authorName, authorPosition, body, coordinateSpace };
 }

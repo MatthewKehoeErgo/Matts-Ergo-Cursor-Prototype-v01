@@ -6,6 +6,13 @@ import {
   placedCommentIconUrl,
   submitIconUrl,
 } from "../reviewModeAssetUrls.js";
+import {
+  COORDINATE_SPACE_DOCUMENT,
+  COORDINATE_SPACE_SCROLL_ROOT,
+  clientPointToRootContent,
+  getReviewModeScrollRoot,
+  pageAnchorToViewportClientCenter,
+} from "../utils/reviewModeScrollRoot.js";
 import { useReviewMode } from "../context/ReviewModeContext.jsx";
 
 const EDITOR_PIN_SIZE = 56 * 0.7;
@@ -21,15 +28,13 @@ function clampPosition(left, top, width, height, viewport) {
   };
 }
 
-/** Viewport (client) center for fixed-position chrome; supports page-space anchors. */
+/** Viewport (client) center for fixed-position chrome. */
 function editorViewportCenter(editor) {
   if (!editor) return { x: 0, y: 0 };
-  const sx = typeof window !== "undefined" ? window.scrollX : 0;
-  const sy = typeof window !== "undefined" ? window.scrollY : 0;
   if (editor.positionAnchor === "viewport") {
     return { x: Number(editor.x), y: Number(editor.y) };
   }
-  return { x: Number(editor.x) - sx, y: Number(editor.y) - sy };
+  return pageAnchorToViewportClientCenter(editor);
 }
 
 function previewEditorPosition(editor, viewport) {
@@ -86,9 +91,12 @@ export function CommentOverlay() {
     };
     window.addEventListener("scroll", bumpScroll, { passive: true, capture: true });
     window.addEventListener("resize", onResize);
+    const root = getReviewModeScrollRoot();
+    root?.addEventListener("scroll", bumpScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", bumpScroll, { capture: true });
       window.removeEventListener("resize", onResize);
+      root?.removeEventListener("scroll", bumpScroll);
     };
   }, []);
 
@@ -146,15 +154,29 @@ export function CommentOverlay() {
 
       event.preventDefault();
       event.stopPropagation();
-      const px =
-        typeof event.pageX === "number"
-          ? event.pageX
-          : event.clientX + window.scrollX;
-      const py =
-        typeof event.pageY === "number"
-          ? event.pageY
-          : event.clientY + window.scrollY;
-      openEditorForCreate(px, py);
+      const root = getReviewModeScrollRoot();
+      let px;
+      let py;
+      let coordinateSpace = COORDINATE_SPACE_DOCUMENT;
+      if (root) {
+        const rel = clientPointToRootContent(event.clientX, event.clientY, root);
+        if (rel) {
+          px = rel.x;
+          py = rel.y;
+          coordinateSpace = COORDINATE_SPACE_SCROLL_ROOT;
+        }
+      }
+      if (coordinateSpace === COORDINATE_SPACE_DOCUMENT) {
+        px =
+          typeof event.pageX === "number"
+            ? event.pageX
+            : event.clientX + window.scrollX;
+        py =
+          typeof event.pageY === "number"
+            ? event.pageY
+            : event.clientY + window.scrollY;
+      }
+      openEditorForCreate({ x: px, y: py, coordinateSpace });
     };
 
     const onKeyDown = (event) => {
@@ -206,13 +228,17 @@ export function CommentOverlay() {
       {(panelOpen || openEditor) && !isCommentsOverview && (
         <div className="review-mode-layer" aria-live="polite">
           {markers.map((comment) => {
-            const sx = typeof window !== "undefined" ? window.scrollX : 0;
-            const sy = typeof window !== "undefined" ? window.scrollY : 0;
-            const vx =
-              comment.positionAnchor === "viewport" ? comment.x : comment.x - sx;
-            const vy =
-              comment.positionAnchor === "viewport" ? comment.y : comment.y - sy;
-            const pos = clampPosition(vx - 24, vy - 24, 48, 48, viewport);
+            const client =
+              comment.positionAnchor === "viewport"
+                ? { x: Number(comment.x), y: Number(comment.y) }
+                : pageAnchorToViewportClientCenter(comment);
+            const pos = clampPosition(
+              client.x - 24,
+              client.y - 24,
+              48,
+              48,
+              viewport,
+            );
 
             return (
               <button

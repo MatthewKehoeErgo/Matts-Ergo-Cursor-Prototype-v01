@@ -2,6 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { CommentOverlay } from "./components/CommentOverlay.jsx";
 import { ReviewModeContextProvider } from "./context/ReviewModeContext.jsx";
+import {
+  COORDINATE_SPACE_DOCUMENT,
+  pageAnchorToViewportClientCenter,
+} from "./utils/reviewModeScrollRoot.js";
 
 function toCommentArray(value) {
   return Array.isArray(value) ? value : [];
@@ -157,12 +161,13 @@ export function ReviewModeProvider({ repository, host, children }) {
   }, []);
 
   const openEditorForCreate = useCallback(
-    (x, y) => {
+    ({ x, y, coordinateSpace = COORDINATE_SPACE_DOCUMENT }) => {
       if (onCommentsOverview) return;
       setOpenEditor({
         id: null,
         x,
         y,
+        coordinateSpace,
         positionAnchor: "page",
         body: "",
         authorName: "",
@@ -243,15 +248,16 @@ export function ReviewModeProvider({ repository, host, children }) {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       if (vw > 0 && vh > 0) {
-        const anchor = openEditor.positionAnchor === "viewport" ? "viewport" : "page";
-        const vx =
-          anchor === "viewport"
-            ? Number(openEditor.x)
-            : Number(openEditor.x) - window.scrollX;
-        const vy =
-          anchor === "viewport"
-            ? Number(openEditor.y)
-            : Number(openEditor.y) - window.scrollY;
+        let vx;
+        let vy;
+        if (openEditor.positionAnchor === "viewport") {
+          vx = Number(openEditor.x);
+          vy = Number(openEditor.y);
+        } else {
+          const c = pageAnchorToViewportClientCenter(openEditor);
+          vx = c.x;
+          vy = c.y;
+        }
         payload = {
           ...payload,
           viewportWidth: vw,

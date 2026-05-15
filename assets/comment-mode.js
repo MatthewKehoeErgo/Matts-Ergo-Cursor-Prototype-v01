@@ -6,9 +6,10 @@
  * - Toggled by the existing "Add a comment" button (same button turns mode off).
  *
  * Coordinates:
- * - New comments store document-space (page) coordinates in `x_position` / `y_position`
- *   so pins track page scroll. Legacy rows (matching saved ratios) are treated as viewport
- *   client coordinates. Markers use `position: fixed` and are repositioned on scroll/resize.
+ * - New comments store scroll-root content coordinates when `[data-review-mode-scroll-root]`
+ *   exists (serialized as `coord_space:scroll_root`), else document-style page coordinates.
+ *   Legacy viewport rows use client-space anchors. Markers use `position: fixed` and sync on
+ *   window and scroll-root scroll/resize.
  *
  * Supabase:
  * - `session_id` — UUID per browser in localStorage (stored on insert; pins load for all sessions on the page).
@@ -61,7 +62,7 @@ const EDITOR_CARD_GAP_PX = 16;
  *   }>,
  *   layer: HTMLElement|null,
  *   hintEl: HTMLElement|null,
- *   openEditor: { shell: HTMLElement, existing: any, anchorPageX: number, anchorPageY: number } | null,
+ *   openEditor: { shell: HTMLElement, existing: any, anchorRelX: number, anchorRelY: number, coordinateSpace: string } | null,
  * }}
  *
  * `openEditor` enforces "only one editor at a time" — checked when a click happens
@@ -111,6 +112,43 @@ function inferPositionAnchorFromRow(row) {
   return nearXr && nearYr ? "viewport" : "page";
 }
 
+function getReviewModeScrollRoot() {
+  var el = document.querySelector("[data-review-mode-scroll-root]");
+  return el instanceof HTMLElement ? el : null;
+}
+
+function clientPointToRootContent(clientX, clientY, root) {
+  if (!root) return null;
+  var r = root.getBoundingClientRect();
+  return {
+    x: root.scrollLeft + (clientX - r.left),
+    y: root.scrollTop + (clientY - r.top),
+  };
+}
+
+function rootContentToClientCenter(relX, relY, root) {
+  if (!root) return null;
+  var r = root.getBoundingClientRect();
+  return {
+    x: r.left + (relX - root.scrollLeft),
+    y: r.top + (relY - root.scrollTop),
+  };
+}
+
+/** Viewport client coords for pin center (fixed overlay). */
+function pageAnchorToViewportClientCenter(record) {
+  if (record.positionAnchor === "viewport") {
+    return { x: Number(record.x), y: Number(record.y) };
+  }
+  var space = record.coordinateSpace || "document";
+  var root = getReviewModeScrollRoot();
+  if (space === "scroll_root" && root) {
+    var p = rootContentToClientCenter(record.x, record.y, root);
+    if (p) return p;
+  }
+  return { x: record.x - window.scrollX, y: record.y - window.scrollY };
+}
+
 function eventPageXY(ev) {
   if (typeof ev.pageX === "number" && typeof ev.pageY === "number") {
     return { x: ev.pageX, y: ev.pageY };
@@ -123,14 +161,8 @@ function eventPageXY(ev) {
 
 /** Top-left of 48×48 marker in viewport px for `position: fixed` (record.x/y = pin center). */
 function markerFixedTopLeft(record) {
-  if (record.positionAnchor === "viewport") {
-    var pv = clampPanelPosition(record.x - 24, record.y - 24, 48, 48);
-    return { left: pv.left, top: pv.top };
-  }
-  var cx = record.x - window.scrollX - 24;
-  var cy = record.y - window.scrollY - 24;
-  var p = clampPanelPosition(cx, cy, 48, 48);
-  return { left: p.left, top: p.top };
+  var c = pageAnchorToViewportClientCenter(record);
+  return clampPanelPosition(c.x - 24, c.y - 24, 48, 48);
 }
 
 function syncAllMarkerDomPositions() {
@@ -166,13 +198,25 @@ function repositionOpenEditorChrome() {
   var entry = state.openEditor;
   if (!entry || !entry.shell) return;
   var pin = entry.shell.querySelector(".comment-mode-editor-pin");
-  if (pin) {
-    pin.style.left = entry.anchorPageX - window.scrollX + "px";
-    pin.style.top = entry.anchorPageY - window.scrollY + "px";
+  if (!pin) return;
+  var vc = editorAnchorToViewportClient(entry);
+  pin.style.left = vc.x + "px";
+  pin.style.top = vc.y + "px";
+  layoutEditorCardFromViewportPoint(entry.shell, vc.x, vc.y);
+}
+
+function editorAnchorToViewportClient(entry) {
+  if (!entry) return { x: 0, y: 0 };
+  if (entry.existing && entry.existing.positionAnchor === "viewport") {
+    return { x: entry.existing.x, y: entry.existing.y };
   }
-  var viewX = entry.anchorPageX - window.scrollX;
-  var viewY = entry.anchorPageY - window.scrollY;
-  layoutEditorCardFromViewportPoint(entry.shell, viewX, viewY);
+  var rec = {
+    positionAnchor: entry.existing ? entry.existing.positionAnchor : "page",
+    x: entry.anchorRelX,
+    y: entry.anchorRelY,
+    coordinateSpace: entry.coordinateSpace || "document",
+  };
+  return pageAnchorToViewportClientCenter(rec);
 }
 
 function onViewportScrollOrResize() {
@@ -187,6 +231,10 @@ function attachViewportScrollListenersOnce() {
   viewportListenersAttached = true;
   window.addEventListener("scroll", onViewportScrollOrResize, { passive: true });
   window.addEventListener("resize", onViewportScrollOrResize);
+  var root = getReviewModeScrollRoot();
+  if (root) {
+    root.addEventListener("scroll", onViewportScrollOrResize, { passive: true });
+  }
 }
 
 /**
@@ -352,10 +400,14 @@ function sanitizeMetaLine(s) {
  * Pack name, position, and comment body into the single `text` column (no DB migration).
  * Legacy rows without `<<META>>` parse as body-only.
  */
-function serializeStoredComment(authorName, authorPosition, body) {
+function serializeStoredComment(authorName, authorPosition, body, coordinateSpace) {
   var n = sanitizeMetaLine(authorName);
   var p = sanitizeMetaLine(authorPosition);
   var b = String(body || "").trim();
+  var coordLine =
+    coordinateSpace === "scroll_root"
+      ? "coord_space:" + coordinateSpace + "\n"
+      : "";
   return (
     "<<META>>\n" +
     "name:" +
@@ -364,6 +416,7 @@ function serializeStoredComment(authorName, authorPosition, body) {
     "position:" +
     p +
     "\n" +
+    coordLine +
     "<<BODY>>\n" +
     b
   );
@@ -386,12 +439,22 @@ function parseStoredComment(raw) {
   var body = raw.slice(idx + sep.length);
   var authorName = "";
   var authorPosition = "";
+  var coordinateSpace;
   metaBlock.split("\n").forEach(function (line) {
     if (line.indexOf("name:") === 0) authorName = line.slice(5).trim();
     else if (line.indexOf("position:") === 0)
       authorPosition = line.slice(9).trim();
+    else if (line.indexOf("coord_space:") === 0) {
+      var cv = line.slice(12).trim();
+      if (cv === "scroll_root") coordinateSpace = "scroll_root";
+    }
   });
-  return { authorName: authorName, authorPosition: authorPosition, body: body };
+  return {
+    authorName: authorName,
+    authorPosition: authorPosition,
+    body: body,
+    coordinateSpace: coordinateSpace,
+  };
 }
 
 /**
@@ -410,6 +473,7 @@ async function persistComment(record, isUpdate) {
     record.authorName,
     record.authorPosition,
     record.text,
+    record.coordinateSpace,
   );
 
   if (isUpdate) {
@@ -442,14 +506,9 @@ async function persistComment(record, isUpdate) {
     status: "unresolved",
   };
   if (vw > 0 && vh > 0) {
-    var vx =
-      record.positionAnchor === "viewport"
-        ? record.x
-        : record.x - window.scrollX;
-    var vy =
-      record.positionAnchor === "viewport"
-        ? record.y
-        : record.y - window.scrollY;
+    var vc = pageAnchorToViewportClientCenter(record);
+    var vx = record.positionAnchor === "viewport" ? record.x : vc.x;
+    var vy = record.positionAnchor === "viewport" ? record.y : vc.y;
     insertPayload.x_ratio = Math.min(1, Math.max(0, vx / vw));
     insertPayload.y_ratio = Math.min(1, Math.max(0, vy / vh));
     insertPayload.viewport_width = Math.round(vw);
@@ -493,6 +552,8 @@ async function loadCommentsFromSupabase() {
       x: Number(row.x_position),
       y: Number(row.y_position),
       positionAnchor: inferPositionAnchorFromRow(row),
+      coordinateSpace:
+        parsed.coordinateSpace === "scroll_root" ? "scroll_root" : "document",
       text: parsed.body,
       authorName: parsed.authorName,
       authorPosition: parsed.authorPosition,
@@ -507,22 +568,16 @@ async function loadCommentsFromSupabase() {
   syncAllMarkerDomPositions();
 }
 
-function openCommentEditor(pageX, pageY, existing) {
+function openCommentEditor(pageX, pageY, existing, coordinateSpaceForNew) {
   // Only one editor at a time — silently dismiss any previously open one.
   closeOpenEditor();
   ensureLayer();
-  var anchorPageX = existing
-    ? existing.positionAnchor === "viewport"
-      ? existing.x + window.scrollX
-      : existing.x
-    : pageX;
-  var anchorPageY = existing
-    ? existing.positionAnchor === "viewport"
-      ? existing.y + window.scrollY
-      : existing.y
-    : pageY;
-  var viewX = anchorPageX - window.scrollX;
-  var viewY = anchorPageY - window.scrollY;
+  var coordinateSpace =
+    existing && existing.id != null
+      ? existing.coordinateSpace || "document"
+      : coordinateSpaceForNew || "document";
+  var anchorRelX = existing ? existing.x : pageX;
+  var anchorRelY = existing ? existing.y : pageY;
   var fieldId =
     existing && existing.id != null
       ? "comment-field-" + existing.id
@@ -553,8 +608,6 @@ function openCommentEditor(pageX, pageY, existing) {
   var pin = document.createElement("div");
   pin.className = "comment-mode-editor-pin";
   pin.appendChild(createIconImg(ICON_SRC));
-  pin.style.left = viewX + "px";
-  pin.style.top = viewY + "px";
 
   var card = document.createElement("div");
   card.className = "comment-mode-pin-card";
@@ -647,8 +700,9 @@ function openCommentEditor(pageX, pageY, existing) {
   state.openEditor = {
     shell: shell,
     existing: existing || null,
-    anchorPageX: anchorPageX,
-    anchorPageY: anchorPageY,
+    anchorRelX: anchorRelX,
+    anchorRelY: anchorRelY,
+    coordinateSpace: coordinateSpace,
   };
 
   closeBtn.addEventListener("click", function (ev) {
@@ -657,7 +711,7 @@ function openCommentEditor(pageX, pageY, existing) {
     closeOpenEditor();
   });
 
-  layoutEditorCardFromViewportPoint(shell, viewX, viewY);
+  repositionOpenEditorChrome();
 
   if (deleteBtn) {
     deleteBtn.addEventListener("click", async function (ev) {
@@ -744,6 +798,10 @@ function openCommentEditor(pageX, pageY, existing) {
         existing && existing.id != null
           ? existing.positionAnchor || "page"
           : "page",
+      coordinateSpace:
+        existing && existing.id != null
+          ? existing.coordinateSpace || "document"
+          : state.openEditor.coordinateSpace || "document",
       text: bodyText.trim(),
       authorName: nameInput.value.trim(),
       authorPosition: positionInput.value.trim(),
@@ -840,8 +898,24 @@ function onDocumentClick(ev) {
   ev.preventDefault();
   ev.stopPropagation();
 
-  var pxy = eventPageXY(ev);
-  openCommentEditor(pxy.x, pxy.y, null);
+  var root = getReviewModeScrollRoot();
+  var x;
+  var y;
+  var coordSpace = "document";
+  if (root) {
+    var rel = clientPointToRootContent(ev.clientX, ev.clientY, root);
+    if (rel) {
+      x = rel.x;
+      y = rel.y;
+      coordSpace = "scroll_root";
+    }
+  }
+  if (coordSpace === "document") {
+    var pxy = eventPageXY(ev);
+    x = pxy.x;
+    y = pxy.y;
+  }
+  openCommentEditor(x, y, null, coordSpace);
 }
 
 function onKeyDown(ev) {
